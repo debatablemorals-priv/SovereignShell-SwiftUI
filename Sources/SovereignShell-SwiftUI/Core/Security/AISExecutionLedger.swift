@@ -127,6 +127,7 @@ public final class AISExecutionLedger {
 
     private func canonicalHash(for value: String) -> String {
         let data = Data(value.utf8)
-        return ddata.sha256HexString()
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
