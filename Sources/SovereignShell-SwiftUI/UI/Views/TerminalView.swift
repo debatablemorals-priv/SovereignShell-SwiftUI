@@ -1,54 +1,33 @@
 import SwiftUI
 
 struct TerminalView: View {
+
     @EnvironmentObject private var container: AppContainer
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(container.terminalSession.outputLines) { line in
-                        Text(line.text)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundColor(color(for: line.kind))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .id(line.id)
-                    }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 4) {
+                ForEach(container.terminalSession.lines) { line in
+                    Text(line.text)
+                        .foregroundColor(color(for: line.kind))
+                        .font(ThemeAuthority.font)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
             }
-            .background(Color.black)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .onAppear {
-                scrollToBottom(with: proxy)
-            }
-            .onChange(of: container.terminalSession.outputLines.count) { _ in
-                scrollToBottom(with: proxy)
-            }
+            .padding()
         }
+        .background(ThemeAuthority.background)
     }
 
-    private func scrollToBottom(with proxy: ScrollViewProxy) {
-        guard let lastID = container.terminalSession.outputLines.last?.id else {
-            return
-        }
-
-        proxy.scrollTo(lastID, anchor: .bottom)
-    }
-
-    private func color(for kind: TerminalOutputKind) -> Color {
+    private func color(for kind: TerminalLine.Kind) -> Color {
         switch kind {
-        case .standard:
-            return .white
-        case .command:
-            return .white
-        case .success:
-            return Color(red: 0.0, green: 1.0, blue: 1.0)
-        case .error:
-            return .red
+        case .input:
+            return ThemeAuthority.accent
+        case .output:
+            return ThemeAuthority.terminalText
         case .system:
-            return .gray
+            return ThemeAuthority.warning
+        case .error:
+            return ThemeAuthority.error
         }
     }
 }

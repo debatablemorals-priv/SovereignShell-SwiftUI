@@ -9,7 +9,7 @@ struct LogPanelView: View {
 
             HStack {
                 Text("Security Event Log")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(ThemeAuthority.font)
 
                 Spacer()
             }
@@ -24,15 +24,15 @@ struct LogPanelView: View {
 
                             Text(timestamp(event.timestamp))
                                 .foregroundColor(.gray)
-                                .font(.system(size: 11, design: .monospaced))
+                                .font(ThemeAuthority.font)
 
                             Text(event.level.rawValue.uppercased())
                                 .foregroundColor(color(for: event.level))
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .font(ThemeAuthority.font)
 
                             Text(event.message)
-                                .foregroundColor(.white)
-                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(ThemeAuthority.terminalText)
+                                .font(ThemeAuthority.font)
 
                             Spacer()
                         }
@@ -42,7 +42,7 @@ struct LogPanelView: View {
             }
         }
         .padding(8)
-        .background(Color.black.opacity(0.85))
+        .background(ThemeAuthority.background)
     }
 
     private func timestamp(_ date: Date) -> String {
@@ -54,13 +54,13 @@ struct LogPanelView: View {
     private func color(for level: AuditEvent.Level) -> Color {
         switch level {
         case .info:
-            return .green
+            return ThemeAuthority.terminalText
         case .warning:
-            return .orange
+            return ThemeAuthority.warning
         case .error:
-            return .red
+            return ThemeAuthority.error
         case .security:
-            return .purple
+            return ThemeAuthority.accent
         }
     }
 }
