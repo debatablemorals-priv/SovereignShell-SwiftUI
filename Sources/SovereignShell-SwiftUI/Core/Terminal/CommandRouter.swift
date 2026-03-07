@@ -5,6 +5,7 @@ enum CommandRouterError: Error, Equatable {
     case unknownCommand(command: String)
 }
 
+@MainActor
 struct CommandRouter {
     func route(
         _ rawInput: String,
