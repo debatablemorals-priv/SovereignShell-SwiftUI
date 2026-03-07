@@ -56,7 +56,6 @@ final class AISExecutionLedger {
 
         try append(event: event)
 
-        // Preserve legacy request/response hashing behavior for now through logging only.
         _ = canonicalHash(for: request)
         _ = canonicalHash(for: response)
     }
@@ -118,12 +117,6 @@ final class AISExecutionLedger {
             throw LedgerError.rollbackViolation
         }
     }
-
-    func currentRollbackCounter() -> UInt64 {
-        rollbackCounter
-    }
-
-  }
 
     func currentRollbackCounter() -> UInt64 {
         rollbackCounter
