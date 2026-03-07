@@ -49,6 +49,19 @@ final class AISExecutionLedger {
         request: String,
         response: String
     ) throws {
+        let event = AISEventFactory.commandEvent(
+            rollbackCounter: rollbackCounter + 1,
+            previousHash: try currentPreviousHash()
+        )
+
+        try append(event: event)
+
+        // Preserve legacy request/response hashing behavior for now through logging only.
+        _ = canonicalHash(for: request)
+        _ = canonicalHash(for: response)
+    }
+
+    func append(event: AISEvent) throws {
         guard !isLocked else {
             logger.security("AIS append blocked because ledger is locked.")
             throw LedgerError.corruptedLedger
@@ -63,21 +76,25 @@ final class AISExecutionLedger {
             throw LedgerError.invalidGenesis
         }
 
-        let nextRollbackCounter = rollbackCounter + 1
+        guard event.previousHash == previous.envelopeHash else {
+            logger.security("AIS event previous-hash mismatch detected.")
+            isLocked = true
+            throw LedgerError.corruptedLedger
+        }
 
         let entry = LedgerEntry(
-            rollbackCounter: nextRollbackCounter,
-            requestHash: canonicalHash(for: request),
-            responseHash: canonicalHash(for: response),
-            previousHash: previous.envelopeHash
+            rollbackCounter: event.rollbackCounter,
+            requestHash: canonicalHash(for: event.eventType.rawValue),
+            responseHash: canonicalHash(for: event.trustState.rawValue),
+            previousHash: event.previousHash
         )
 
         entries.append(entry)
 
         do {
             try store.save(entries)
-            rollbackCounter = nextRollbackCounter
-            logger.security("AIS ledger append committed successfully.")
+            rollbackCounter = event.rollbackCounter
+            logger.security("AIS event append committed successfully.")
         } catch {
             logger.security("AIS atomic commit failed. Execution halted.")
             isLocked = true
@@ -106,6 +123,12 @@ final class AISExecutionLedger {
         rollbackCounter
     }
 
+  }
+
+    func currentRollbackCounter() -> UInt64 {
+        rollbackCounter
+    }
+
     func lockedState() -> Bool {
         isLocked
     }
@@ -122,6 +145,19 @@ final class AISExecutionLedger {
             responseHash: canonicalHash(for: "GENESIS_RESPONSE"),
             previousHash: String(repeating: "0", count: 64)
         )
+    }
+
+    private func currentPreviousHash() throws -> String {
+        let entries = try store.load()
+        try LedgerChainValidator.validate(entries)
+
+        guard let previous = entries.last else {
+            logger.security("AIS append failed because genesis is missing.")
+            isLocked = true
+            throw LedgerError.invalidGenesis
+        }
+
+        return previous.envelopeHash
     }
 
     private func canonicalHash(for value: String) -> String {
