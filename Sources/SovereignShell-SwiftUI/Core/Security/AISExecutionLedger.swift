@@ -1,14 +1,13 @@
 import Foundation
 import CryptoKit
 
-public final class AISExecutionLedger {
-
+final class AISExecutionLedger {
     private let store: LedgerStore
     private let logger: SecureLogger
     private var rollbackCounter: UInt64
     private var isLocked: Bool = false
 
-    public init(
+    init(
         store: LedgerStore,
         logger: SecureLogger,
         initialRollbackCounter: UInt64
@@ -18,7 +17,7 @@ public final class AISExecutionLedger {
         self.rollbackCounter = initialRollbackCounter
     }
 
-    public func bootstrap() throws {
+    func bootstrap() throws {
         do {
             let entries = try store.load()
             try LedgerChainValidator.validate(entries)
@@ -46,7 +45,7 @@ public final class AISExecutionLedger {
         }
     }
 
-    public func append(
+    func append(
         request: String,
         response: String
     ) throws {
@@ -86,7 +85,7 @@ public final class AISExecutionLedger {
         }
     }
 
-    public func verifyAgainstRollbackCounter(_ expectedRollbackCounter: UInt64) throws {
+    func verifyAgainstRollbackCounter(_ expectedRollbackCounter: UInt64) throws {
         let entries = try store.load()
         try LedgerChainValidator.validate(entries)
 
@@ -103,15 +102,15 @@ public final class AISExecutionLedger {
         }
     }
 
-    public func currentRollbackCounter() -> UInt64 {
+    func currentRollbackCounter() -> UInt64 {
         rollbackCounter
     }
 
-    public func lockedState() -> Bool {
+    func lockedState() -> Bool {
         isLocked
     }
 
-    public func lock() {
+    func lock() {
         isLocked = true
         logger.security("AIS ledger manually locked.")
     }

@@ -1,14 +1,13 @@
 import Foundation
 
-public final class LedgerStore {
-
+final class LedgerStore {
     private let fileURL: URL
 
-    public init(fileURL: URL) {
+    init(fileURL: URL) {
         self.fileURL = fileURL
     }
 
-    public func load() throws -> [LedgerEntry] {
+    func load() throws -> [LedgerEntry] {
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
             throw LedgerError.ledgerNotFound
         }
@@ -21,7 +20,7 @@ public final class LedgerStore {
         }
     }
 
-    public func save(_ entries: [LedgerEntry]) throws {
+    func save(_ entries: [LedgerEntry]) throws {
         do {
             let directoryURL = fileURL.deletingLastPathComponent()
 
