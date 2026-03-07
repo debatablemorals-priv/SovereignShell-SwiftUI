@@ -12,31 +12,12 @@ final class AppContainer: ObservableObject {
     let terminalSession: TerminalSession
     let terminalEngine: TerminalEngine
 
-    convenience init() {
-        self.init(
-            commandHistory: CommandHistory(),
-            securityState: SecurityState(),
-            rollbackCounter: RollbackCounter(),
-            logger: SecureLogger(),
-            terminalSession: TerminalSession(),
-            router: CommandRouter()
-        )
-    }
-
-    init(
-        commandHistory: CommandHistory,
-        securityState: SecurityState,
-        rollbackCounter: RollbackCounter,
-        logger: SecureLogger,
-        terminalSession: TerminalSession,
-        router: CommandRouter
-    ) {
-
-        self.commandHistory = commandHistory
-        self.securityState = securityState
-        self.rollbackCounter = rollbackCounter
-        self.logger = logger
-        self.terminalSession = terminalSession
+    init() {
+        self.commandHistory = CommandHistory()
+        self.securityState = SecurityState()
+        self.rollbackCounter = RollbackCounter()
+        self.logger = SecureLogger()
+        self.terminalSession = TerminalSession()
 
         let applicationSupportURL = FileManager.default.urls(
             for: .applicationSupportDirectory,
@@ -56,7 +37,7 @@ final class AppContainer: ObservableObject {
         )
 
         self.terminalEngine = TerminalEngine(
-            router: router,
+            router: CommandRouter(),
             session: terminalSession,
             history: commandHistory,
             securityState: securityState,
@@ -71,6 +52,13 @@ final class AppContainer: ObservableObject {
                 UInt64(rollbackCounter.current())
             )
 
+            let bootEvent = AISEventFactory.bootEvent(
+                rollbackCounter: executionLedger.currentRollbackCounter() + 1,
+                previousHash: try currentLedgerPreviousHash(from: ledgerStore)
+            )
+
+            try executionLedger.append(event: bootEvent)
+
             securityState.markAISValid()
 
             logger.security(
@@ -80,7 +68,6 @@ final class AppContainer: ObservableObject {
             terminalEngine.bootstrap()
 
         } catch {
-
             securityState.markAISInvalid()
 
             logger.security(
@@ -92,5 +79,16 @@ final class AppContainer: ObservableObject {
                 kind: .error
             )
         }
+    }
+
+    private func currentLedgerPreviousHash(from store: LedgerStore) throws -> String {
+        let entries = try store.load()
+        try LedgerChainValidator.validate(entries)
+
+        guard let previous = entries.last else {
+            throw LedgerError.invalidGenesis
+        }
+
+        return previous.envelopeHash
     }
 }
