@@ -84,7 +84,7 @@ final class AISExecutionLedger {
         let entry = LedgerEntry(
             rollbackCounter: event.rollbackCounter,
             requestHash: canonicalHash(for: event.eventType.rawValue),
-            responseHash: canonicalHash(for: event.trustState.rawValue),
+            responseHash: canonicalHash(for: event.trustState.rawValue + "|" + event.handoffClass.rawValue),
             previousHash: event.previousHash
         )
 
@@ -100,6 +100,27 @@ final class AISExecutionLedger {
             throw LedgerError.persistenceFailure
         }
     }
+
+    @discardableResult
+    func handleSecurityEvent(_ securityEvent: AISSecurityEvent) throws -> AISSecretDisposition {
+        let disposition = AISBreachDetector.disposition(for: securityEvent)
+        let eventType = AISBreachDetector.eventType(for: securityEvent)
+        let trustState = AISBreachDetector.trustState(for: securityEvent)
+
+        isLocked = true
+
+        let event = AISEvent(
+            rollbackCounter: rollbackCounter + 1,
+            eventType: eventType,
+            trustState: trustState,
+            handoffClass: .none,
+            previousHash: try currentPreviousHash()
+        )
+
+        try append(event: event)
+        logger.security("AIS security event handled: \(eventType.rawValue)")
+
+        return disposition}
 
     func verifyAgainstRollbackCounter(_ expectedRollbackCounter: UInt64) throws {
         let entries = try store.load()
