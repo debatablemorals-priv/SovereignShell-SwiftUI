@@ -12,13 +12,24 @@ final class AppContainer: ObservableObject {
     let terminalSession: TerminalSession
     let terminalEngine: TerminalEngine
 
+    convenience init() {
+        self.init(
+            commandHistory: CommandHistory(),
+            securityState: SecurityState(),
+            rollbackCounter: RollbackCounter(),
+            logger: SecureLogger(),
+            terminalSession: TerminalSession(),
+            router: CommandRouter()
+        )
+    }
+
     init(
-        commandHistory: CommandHistory = CommandHistory(),
-        securityState: SecurityState = SecurityState(),
-        rollbackCounter: RollbackCounter = RollbackCounter(),
-        logger: SecureLogger = SecureLogger(),
-        terminalSession: TerminalSession = TerminalSession(),
-        router: CommandRouter = CommandRouter()
+        commandHistory: CommandHistory,
+        securityState: SecurityState,
+        rollbackCounter: RollbackCounter,
+        logger: SecureLogger,
+        terminalSession: TerminalSession,
+        router: CommandRouter
     ) {
 
         self.commandHistory = commandHistory
@@ -54,7 +65,6 @@ final class AppContainer: ObservableObject {
         )
 
         do {
-
             try executionLedger.bootstrap()
 
             try executionLedger.verifyAgainstRollbackCounter(
