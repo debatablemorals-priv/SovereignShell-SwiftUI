@@ -9,7 +9,7 @@ final class TerminalEngine: ObservableObject {
     private let securityState: SecurityState
 
     init(
-        router: CommandRouter = CommandRouter(),
+        router: CommandRouter,
         session: TerminalSession,
         history: CommandHistory,
         securityState: SecurityState

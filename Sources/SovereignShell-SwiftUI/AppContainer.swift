@@ -17,6 +17,7 @@ final class AppContainer: ObservableObject {
         self.executionLedger = AISExecutionLedger()
         self.terminalSession = TerminalSession()
         self.terminalEngine = TerminalEngine(
+            router: CommandRouter(),
             session: terminalSession,
             history: commandHistory,
             securityState: securityState
