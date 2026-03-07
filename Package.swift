@@ -5,7 +5,7 @@ let package = Package(
     name: "SovereignShell-SwiftUI",
     platforms: [
         .iOS(.v17),
-        .macOS(.v10_15)
+        .macOS(.v11)
     ],
     products: [
         .executable(
