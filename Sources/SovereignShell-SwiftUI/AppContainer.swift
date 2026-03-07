@@ -39,7 +39,9 @@ final class AppContainer: ObservableObject {
             router: CommandRouter(),
             session: terminalSession,
             history: commandHistory,
-            securityState: securityState
+            securityState: securityState,
+            executionLedger: executionLedger,
+            logger: logger
         )
 
         do {
