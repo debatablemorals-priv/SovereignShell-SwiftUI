@@ -1,5 +1,5 @@
 import Foundation
-import CommonCrypto
+import CryptoKit
 
 public final class AISExecutionLedger {
 
@@ -126,17 +126,8 @@ public final class AISExecutionLedger {
     }
 
     private func canonicalHash(for value: String) -> String {
-        let ddata = Data(value.utf8)
-        return data.sha256HexString()
-    }
-}
-
-private extension Data {
-    func sha256HexString() -> String {
-        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        self.withUnsafeBytes { buffer in
-            _ = CC_SHA256(buffer.baseAddress, CC_LONG(buffer.count), &hash)
-        }
-        return hash.map { String(format: "%02x", $0) }.joined()
+        let data = Data(value.utf8)
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
