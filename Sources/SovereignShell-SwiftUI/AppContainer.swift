@@ -3,6 +3,7 @@ import Combine
 
 @MainActor
 final class AppContainer: ObservableObject {
+
     let commandHistory: CommandHistory
     let securityState: SecurityState
     let rollbackCounter: RollbackCounter
@@ -12,6 +13,7 @@ final class AppContainer: ObservableObject {
     let terminalEngine: TerminalEngine
 
     init() {
+
         self.commandHistory = CommandHistory()
         self.securityState = SecurityState()
         self.rollbackCounter = RollbackCounter()
@@ -39,21 +41,35 @@ final class AppContainer: ObservableObject {
             router: CommandRouter(),
             session: terminalSession,
             history: commandHistory,
-            securityState: securityState
+            securityState: securityState,
+            executionLedger: executionLedger,
+            logger: logger
         )
 
         do {
+
             try executionLedger.bootstrap()
+
             try executionLedger.verifyAgainstRollbackCounter(
                 UInt64(rollbackCounter.current())
             )
 
             securityState.markAISValid()
-            logger.security("Deterministic boot sequence completed successfully.")
+
+            logger.security(
+                "Deterministic boot sequence completed successfully."
+            )
+
             terminalEngine.bootstrap()
+
         } catch {
+
             securityState.markAISInvalid()
-            logger.security("Deterministic boot sequence failed. Terminal activation blocked.")
+
+            logger.security(
+                "Deterministic boot sequence failed. Terminal activation blocked."
+            )
+
             terminalSession.appendOutput(
                 "AIS verification failed. Execution halted.",
                 kind: .error
