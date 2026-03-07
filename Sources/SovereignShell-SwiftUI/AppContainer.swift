@@ -12,13 +12,20 @@ final class AppContainer: ObservableObject {
     let terminalSession: TerminalSession
     let terminalEngine: TerminalEngine
 
-    init() {
+    init(
+        commandHistory: CommandHistory = CommandHistory(),
+        securityState: SecurityState = SecurityState(),
+        rollbackCounter: RollbackCounter = RollbackCounter(),
+        logger: SecureLogger = SecureLogger(),
+        terminalSession: TerminalSession = TerminalSession(),
+        router: CommandRouter = CommandRouter()
+    ) {
 
-        self.commandHistory = CommandHistory()
-        self.securityState = SecurityState()
-        self.rollbackCounter = RollbackCounter()
-        self.logger = SecureLogger()
-        self.terminalSession = TerminalSession()
+        self.commandHistory = commandHistory
+        self.securityState = securityState
+        self.rollbackCounter = rollbackCounter
+        self.logger = logger
+        self.terminalSession = terminalSession
 
         let applicationSupportURL = FileManager.default.urls(
             for: .applicationSupportDirectory,
@@ -38,7 +45,7 @@ final class AppContainer: ObservableObject {
         )
 
         self.terminalEngine = TerminalEngine(
-            router: CommandRouter(),
+            router: router,
             session: terminalSession,
             history: commandHistory,
             securityState: securityState,
