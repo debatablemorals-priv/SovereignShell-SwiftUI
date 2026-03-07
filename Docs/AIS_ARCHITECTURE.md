@@ -1,177 +1,283 @@
 # Atomic Integrity Seal (AIS) Architecture
+## SovereignShell Security Subsystem
 
-## Overview
+Version: 1.1  
+Authority: SovereignGenesis  
+Status: Canonical Implementation Architecture
 
-Atomic Integrity Seal (AIS) is the tamper-evident execution integrity layer of SovereignShell.  
-It records command execution in a deterministic chained ledger to detect tampering, rollback attacks, and corrupted runtime state.
+---
 
-AIS ensures that the terminal environment cannot execute commands without first establishing a verified integrity state.
+# 1. Purpose
 
-## Core Security Guarantees
+Atomic Integrity Seal (AIS) is the deterministic trust authority of the SovereignShell runtime.
 
 AIS provides:
 
-- Tamper-evident command history
-- Deterministic execution logging
-- Rollback detection
-- Fail-secure runtime locking
-- Chain integrity verification
+• deterministic trust continuity  
+• tamper-evident execution records  
+• decentralized trust handoff recording  
+• sandbox-confined security enforcement  
+• fail-secure shutdown during security violations  
+• cryptographic erasure of sandbox-owned trust anchors  
 
-If any integrity condition fails, the system locks execution and prevents further command processing.
+AIS **never has access to plaintext, ciphertext, or encryption keys.**
 
-## Architectural Components
+AIS instead verifies the **integrity and authenticity of events** surrounding secure operations.
 
-### AISExecutionLedger
+The system functions as a **self-authenticating trust object** that records and enforces integrity without possessing knowledge of protected data.
 
-The AISExecutionLedger manages the runtime integrity ledger.
+---
 
-Responsibilities:
+# 2. Design Principles
 
-- Initialize ledger on application boot
-- Create deterministic genesis record
-- Append execution entries
-- Verify rollback counter consistency
-- Lock execution when violations occur
+AIS is designed around the following core principles.
 
-### LedgerStore
+### Deterministic Trust
 
-LedgerStore handles persistent storage of the AIS ledger.
+AIS verifies system integrity through deterministic validation of trust state transitions.
 
-Responsibilities:
+### Zero Knowledge Integrity
 
-- Persist ledger entries
-- Load existing ledger state
-- Detect corruption
-- Provide atomic write guarantees
+AIS must never possess:
 
-### LedgerEntry
+• plaintext  
+• ciphertext  
+• encryption keys  
+• hashes of protected content  
 
-Each ledger entry represents a sealed execution event.
+AIS only records **structural trust events**.
 
-Fields include:
+### Sandbox Confinement
 
-- rollbackCounter
-- requestHash
-- responseHash
-- previousHash
-- envelopeHash
+AIS operates strictly within the **application sandbox**.
 
-Each entry cryptographically binds to the previous entry, forming a tamper-evident chain.
+AIS must never:
 
-### LedgerChainValidator
+• interfere with the host operating system  
+• restrict normal device use  
+• prevent application deletion  
+• access resources outside the sandbox  
 
-Responsible for validating ledger integrity.
+AIS governs only the **SovereignShell trust domain**.
 
-Validation checks:
+### Minimal Memory
 
-- chain continuity
-- hash correctness
-- genesis validity
-- rollback binding consistency
+AIS is intentionally **amnesiac**.
 
-If validation fails, AIS enters a locked state.
+It records events **only when necessary** and never stores operational metadata beyond required trust state transitions.
 
-### SecurityState
+### Deterministic Failure
 
-SecurityState tracks runtime security status.
+When trust continuity breaks, AIS must **fail closed**.
 
-Key flags:
+Trusted execution halts until recovery or application reset.
 
-- isLocked
-- isAISValid
-- runtimeViolationDetected
+---
 
-This state determines whether the terminal engine is permitted to execute commands.
+# 3. Trust Domain Boundary
 
-### TerminalEngine Integration
+AIS governs only the internal trust domain of SovereignShell.
+Device
+└── Application Sandbox
+└── SovereignShell Trust Domain
+└── Atomic Integrity Seal (AIS)
+AIS cannot and must not influence:
 
-The terminal engine integrates with AIS to ensure execution events are sealed.
+• other applications  
+• system security mechanisms  
+• operating system behavior  
 
-Flow:
+The user must always retain full control of the device.
 
-1. Command is received
-2. Command executes
-3. Response is produced
-4. AIS ledger entry is created
-5. Entry is appended to the ledger
+---
 
-If the append operation fails, execution is halted.
+# 4. AIS Event Model
 
-### AppContainer Boot Integration
+AIS records only structural events necessary to verify trust continuity.
 
-AIS initialization occurs during application boot.
+Typical events include:
+boot
+commandExecution
+trustHandoff
+rollbackCheck
+securityViolation
+trustBroken
+lock
+erase
+eraseFailed
 
-Boot sequence:
+Events never contain:
 
-1. Initialize LedgerStore
-2. Initialize AISExecutionLedger
-3. Load ledger
-4. Validate chain
-5. Verify rollback counter
-6. Activate terminal engine if valid
+• identities  
+• content hashes  
+• encryption keys  
+• ciphertext references  
+• plaintext references  
 
-If any step fails, the terminal remains locked.
+Events record **only the existence of trust transitions**.
 
-## Genesis Entry
+---
 
-If the ledger does not exist, AIS creates a deterministic genesis entry.
+# 5. Ledger Model
 
-Genesis properties:
+AIS maintains a deterministic ledger of trust events.
 
-- previousHash = all zeroes
-- rollbackCounter = current runtime value
-- deterministic envelope hash
+Each ledger entry contains:
+rollbackCounter
+eventType
+previousHash
+eventHash
 
-This establishes the root of the integrity chain.
+This produces a **tamper-evident chain of trust continuity**.
 
-## Failure Behavior
+The ledger allows detection of:
 
-AIS is fail-secure.
+• rollback attacks  
+• execution tampering  
+• trust chain breaks  
 
-Detected violations include:
+AIS does not store operational details about the event itself.
 
-- ledger corruption
-- chain mismatch
-- rollback counter mismatch
-- missing genesis entry
-- persistence failure
+---
 
-When detected:
+# 6. Security Event Response
 
-- execution is locked
-- security state is marked invalid
-- terminal engine refuses command execution
+AIS must respond deterministically to security violations.
 
-## Current Security Model
+Qualifying violations include:
 
-AIS currently protects against:
+• ledger corruption  
+• rollback mismatch  
+• trust transition inconsistency  
+• tampering detection  
+• runtime integrity violation  
 
-- local ledger tampering
-- rollback attacks
-- command history manipulation
-- corrupted execution logs
+When a violation occurs:
 
-AIS ensures the runtime cannot silently continue after integrity failure.
+1. AIS marks trust state as **broken**
+2. AIS halts trusted execution
+3. AIS locks the application trust domain
+4. AIS invokes secret disposition procedures
+5. AIS records the event in the ledger
 
-## Future Enhancements
+Execution remains blocked until recovery or application reset.
 
-Planned enhancements include:
+---
 
-- Merkle-tree anchored ledger checkpoints
-- external integrity verification
-- distributed audit logs
-- remote trust anchoring
-- SG substrate integration
+# 7. Cryptographic Erasure Policy
 
-These upgrades will allow AIS to support stronger cryptographic audit guarantees.
+AIS does **not** directly hold or erase encryption keys.
 
-## Status
+However AIS is responsible for triggering **cryptographic erasure of sandbox-owned trust anchors**.
 
-AIS v1 is currently:
+Examples include:
 
-- implemented
-- tamper-evident
-- integrated with terminal execution
-- verified through CI tests
+• application-owned signing certificate authorities  
+• sandbox trust roots  
+• locally generated signing identities  
 
-AIS now serves as the security backbone of the SovereignShell runtime.
+These objects may be destroyed by:
+
+• key destruction  
+• envelope key invalidation  
+• deletion of encrypted key blobs  
+• memory zeroization
+
+External secrets are **never erased by AIS**.
+
+Secrets originating from the system keychain are **not destroyed**.
+
+---
+
+# 8. Keychain Interaction
+
+Secrets may temporarily transit from the Keychain into the application sandbox during secure operations.
+
+AIS may supervise these transitions.
+
+AIS may record events such as:
+keyTransitStart
+keyTransitComplete
+keyTransitAbort
+
+AIS must **never store or access the key material itself**.
+
+AIS only records that a trust boundary interaction occurred.
+
+---
+
+# 9. User Notification
+
+When AIS performs a security shutdown or cryptographic erasure event, the user must be notified.
+
+Notification mechanisms may include:
+
+• banner alerts  
+• modal warnings  
+• security notifications
+
+Example message:
+Security event detected.
+Local trust anchors were securely destroyed.
+SovereignShell has entered protected mode.
+
+User notification ensures transparency of trust state changes.
+
+---
+
+# 10. Application Recovery
+
+SovereignShell must support secure recovery after AIS shutdown.
+
+During first launch, the user creates a **recovery password**.
+
+This password is stored securely using the system Keychain.
+
+Recovery procedure:
+
+1. user authenticates using recovery password
+2. AIS verifies recovery authorization
+3. new sandbox trust anchors are generated
+4. a new ledger genesis entry is created
+5. application trust domain is restored
+
+This allows recovery without compromising AIS integrity guarantees.
+
+---
+
+# 11. Trust Handoff
+
+AIS supports decentralized trust transitions between entities.
+
+When trust moves to another system:
+
+1. AIS records the handoff event
+2. the receiving party assumes responsibility for trust continuity
+3. the AIS ledger preserves the boundary of responsibility
+
+AIS therefore creates a **deterministic trust handoff ledger**.
+
+---
+
+# 12. Proprietary Status
+
+Atomic Integrity Seal (AIS) is a proprietary security architecture developed as part of the SovereignGenesis system.
+
+AIS forms a core component of the SovereignGenesis trust model and SovereignShell runtime environment.
+
+Implementation, architecture, and specification are owned and maintained within the SovereignGenesis ecosystem.
+
+---
+
+# 13. Summary
+
+Atomic Integrity Seal provides:
+
+• deterministic trust continuity  
+• decentralized trust ledger recording  
+• tamper-evident execution verification  
+• sandbox-confined security enforcement  
+• fail-secure response to trust violations  
+
+AIS enforces trust boundaries without possessing protected data, enabling secure integrity verification without compromising encryption secrecy.
+
