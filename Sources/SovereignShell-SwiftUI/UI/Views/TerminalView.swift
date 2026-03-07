@@ -6,7 +6,7 @@ struct TerminalView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(container.terminalSession.outputLines)) { line in
+                ForEach(Array(container.terminalSession.outputLines), id: \.id) { line in
                     Text(verbatim: line.text)
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(color(for: line.kind))
