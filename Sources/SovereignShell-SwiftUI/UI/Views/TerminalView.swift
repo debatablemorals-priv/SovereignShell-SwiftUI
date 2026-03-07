@@ -11,7 +11,6 @@ struct TerminalView: View {
                         .font(.system(.body, design: .monospaced))
                         .foregroundColor(color(for: line.kind))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .id(line.id)
                 }
             }
             .padding()
