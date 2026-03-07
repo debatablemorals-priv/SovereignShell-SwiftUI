@@ -24,8 +24,6 @@ struct TerminalView: View {
             return .green
         case .system:
             return .yellow
-        case .input:
-            return .white
         case .success:
             return .blue
         case .error:
