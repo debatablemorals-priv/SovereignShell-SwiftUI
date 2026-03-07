@@ -84,16 +84,45 @@ final class TerminalEngine: ObservableObject {
             if let output = result.output, !output.isEmpty {
                 session.appendOutput(output, kind: .standard)
             }
+
         } catch let error as LedgerError {
-            logger.security("Ledger commit failed for command: \(trimmed)")
-            securityState.markAISInvalid()
-            executionLedger.lock()
-            session.appendOutput("CHAIN VALIDATION FAILURE — SYSTEM HALTED", kind: .error)
-            session.appendOutput(String(describing: error), kind: .error)
+
+            logger.security("AIS ledger failure detected for command: \(trimmed)")
+
+            do {
+                let disposition = try executionLedger.handleSecurityEvent(.ledgerCorruption)
+
+                securityState.markAISInvalid()
+                session.lock()
+
+                session.appendOutput(
+                    "AIS SECURITY EVENT — TRUST DOMAIN LOCKED",
+                    kind: .error
+                )
+
+                session.appendOutput(
+                    "Secret disposition: \(disposition)",
+                    kind: .error
+                )
+
+                session.appendOutput(
+                    String(describing: error),
+                    kind: .error
+                )
+
+            } catch {
+                logger.security("AIS breach handling failed.")
+                session.lock()
+                securityState.markAISInvalid()
+            }
+
         } catch let error as ExecutionError {
+
             logger.error("Execution routing failed for command: \(trimmed)")
             session.appendOutput(String(describing: error), kind: .error)
+
         } catch {
+
             logger.error("Unexpected execution failure for command: \(trimmed)")
             session.appendOutput("UNEXPECTED EXECUTION FAILURE", kind: .error)
         }
