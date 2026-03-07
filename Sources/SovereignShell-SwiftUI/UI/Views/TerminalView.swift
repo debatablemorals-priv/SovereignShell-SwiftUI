@@ -28,6 +28,8 @@ struct TerminalView: View {
             return .blue
         case .error:
             return .red
+        case .command:
+            return .gray
         }
     }
 }
