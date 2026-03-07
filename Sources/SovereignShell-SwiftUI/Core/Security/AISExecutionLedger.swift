@@ -1,124 +1,133 @@
 import Foundation
 import CryptoKit
 
-struct LedgerEntry: Codable {
-    let entryID: UUID
-    let timestamp: Date
-    let rollbackCounter: Int
-    let previousHash: String
-    let requestHash: String
-    let responseHash: String
-    let envelopeHash: String
-    
-    func canonicalSerialization() -> String {
-        return "\(entryID.uuidString)|\(timestamp.timeIntervalSince1970)|\(rollbackCounter)|\(requestHash)|\(responseHash)"
-    }
-}
+public final class AISExecutionLedger {
 
-class AISExecutionLedger {
-    private var entries: [LedgerEntry] = []
-    private var rollbackCounter: Int = 0
-    private let fileURL: URL
-    
-    init() {
-        self.fileURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("SovereignShell")
-            .appendingPathComponent("ledger.chain")
-        loadOrCreateLedger()
+    private let store: LedgerStore
+    private let logger: SecureLogger
+    private var rollbackCounter: UInt64
+    private var isLocked: Bool = false
+
+    public init(
+        store: LedgerStore,
+        logger: SecureLogger,
+        initialRollbackCounter: UInt64
+    ) {
+        self.store = store
+        self.logger = logger
+        self.rollbackCounter = initialRollbackCounter
     }
-    
-    private func loadOrCreateLedger() {
-        if FileManager.default.fileExists(atPath: fileURL.path) {
-            loadLedger()
-            verifyChainIntegrity()
-        } else {
-            createGenesisLedger()
-        }
-    }
-    
-    private func createGenesisLedger() {
+
+    public func bootstrap() throws {
         do {
-            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let genesisEntry = LedgerEntry(
-                entryID: UUID(),
-                timestamp: Date(),
-                rollbackCounter: 0,
-                previousHash: "GENESIS",
-                requestHash: computeHash("GENESIS_REQUEST"),
-                responseHash: computeHash("GENESIS_RESPONSE"),
-                envelopeHash: computeHash("GENESIS_ENVELOPE")
-            )
-            entries = [genesisEntry]
-            rollbackCounter = 0
-            saveLedger()
-        } catch {
-            fatalError("Failed to create genesis ledger: \(error)")
-        }
-    }
-    
-    private func loadLedger() {
-        do {
-            let data = try Data(contentsOf: fileURL)
-            let decoder = JSONDecoder()
-            let loadedEntries = try decoder.decode([LedgerEntry].self, from: data)
-            entries = loadedEntries
-            rollbackCounter = entries.last?.rollbackCounter ?? 0
-        } catch {
-            fatalError("Failed to load ledger: \(error)")
-        }
-    }
-    
-    private func saveLedger() {
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(entries)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            fatalError("Failed to save ledger: \(error)")
-        }
-    }
-    
-    func append(_ requestHash: String, _ responseHash: String) throws {
-        let newEntry = LedgerEntry(
-            entryID: UUID(),
-            timestamp: Date(),
-            rollbackCounter: rollbackCounter + 1,
-            previousHash: computeHash(entries.last?.canonicalSerialization() ?? "GENESIS"),
-            requestHash: requestHash,
-            responseHash: responseHash,
-            envelopeHash: computeHash(requestHash + responseHash)
-        )
-        
-        entries.append(newEntry)
-        rollbackCounter += 1
-        saveLedger()
-    }
-    
-    private func verifyChainIntegrity() {
-        for (index, entry) in entries.enumerated() {
-            if index > 0 {
-                let previousEntry = entries[index - 1]
-                let expectedHash = computeHash(previousEntry.canonicalSerialization())
-                guard expectedHash == entry.previousHash else {
-                    fatalError("Chain integrity violation at entry \(index)")
-                }
+            let entries = try store.load()
+            try LedgerChainValidator.validate(entries)
+
+            guard let last = entries.last else {
+                throw LedgerError.invalidGenesis
             }
+
+            guard last.rollbackCounter == rollbackCounter else {
+                logger.security("AIS rollback binding mismatch during bootstrap.")
+                isLocked = true
+                throw LedgerError.rollbackViolation
+            }
+
+            logger.security("AIS bootstrap verification passed.")
+        } catch LedgerError.ledgerNotFound {
+            let genesis = makeGenesisEntry()
+            try store.save([genesis])
+            rollbackCounter = genesis.rollbackCounter
+            logger.security("AIS genesis entry created deterministically.")
+        } catch {
+            logger.security("AIS bootstrap verification failed. Execution halted.")
+            isLocked = true
+            throw error
         }
     }
-    
-    private func computeHash(_ input: String) -> String {
-        let data = input.data(using: .utf8) ?? Data()
+
+    public func append(
+        request: String,
+        response: String
+    ) throws {
+        guard !isLocked else {
+            logger.security("AIS append blocked because ledger is locked.")
+            throw LedgerError.corruptedLedger
+        }
+
+        var entries = try store.load()
+        try LedgerChainValidator.validate(entries)
+
+        guard let previous = entries.last else {
+            logger.security("AIS append failed because genesis is missing.")
+            isLocked = true
+            throw LedgerError.invalidGenesis
+        }
+
+        let nextRollbackCounter = rollbackCounter + 1
+
+        let entry = LedgerEntry(
+            rollbackCounter: nextRollbackCounter,
+            requestHash: canonicalHash(for: request),
+            responseHash: canonicalHash(for: response),
+            previousHash: previous.envelopeHash
+        )
+
+        entries.append(entry)
+
+        do {
+            try store.save(entries)
+            rollbackCounter = nextRollbackCounter
+            logger.security("AIS ledger append committed successfully.")
+        } catch {
+            logger.security("AIS atomic commit failed. Execution halted.")
+            isLocked = true
+            throw LedgerError.persistenceFailure
+        }
+    }
+
+    public func verifyAgainstRollbackCounter(_ expectedRollbackCounter: UInt64) throws {
+        let entries = try store.load()
+        try LedgerChainValidator.validate(entries)
+
+        guard let last = entries.last else {
+            logger.security("AIS verification failed because genesis is missing.")
+            isLocked = true
+            throw LedgerError.invalidGenesis
+        }
+
+        guard last.rollbackCounter == expectedRollbackCounter else {
+            logger.security("AIS rollback binding mismatch detected.")
+            isLocked = true
+            throw LedgerError.rollbackViolation
+        }
+    }
+
+    public func currentRollbackCounter() -> UInt64 {
+        rollbackCounter
+    }
+
+    public func lockedState() -> Bool {
+        isLocked
+    }
+
+    public func lock() {
+        isLocked = true
+        logger.security("AIS ledger manually locked.")
+    }
+
+    private func makeGenesisEntry() -> LedgerEntry {
+        LedgerEntry(
+            rollbackCounter: rollbackCounter,
+            requestHash: canonicalHash(for: "GENESIS_REQUEST"),
+            responseHash: canonicalHash(for: "GENESIS_RESPONSE"),
+            previousHash: String(repeating: "0", count: 64)
+        )
+    }
+
+    private func canonicalHash(for value: String) -> String {
+        let data = Data(value.utf8)
         let digest = SHA256.hash(data: data)
-        return digest.withUnsafeBytes { ptr in
-            ptr.map { String(format: "%02x", $0) }.joined()
-        }
-    }
-    
-    func getEntries() -> [LedgerEntry] {
-        return entries
-    }
-    
-    func getCurrentRollbackCounter() -> Int {
-        return rollbackCounter
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }

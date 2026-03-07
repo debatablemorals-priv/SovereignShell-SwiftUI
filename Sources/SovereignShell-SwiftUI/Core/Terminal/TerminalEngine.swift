@@ -7,17 +7,23 @@ final class TerminalEngine: ObservableObject {
     private let session: TerminalSession
     private let history: CommandHistory
     private let securityState: SecurityState
+    private let executionLedger: AISExecutionLedger
+    private let logger: SecureLogger
 
     init(
         router: CommandRouter,
         session: TerminalSession,
         history: CommandHistory,
-        securityState: SecurityState
+        securityState: SecurityState,
+        executionLedger: AISExecutionLedger,
+        logger: SecureLogger
     ) {
         self.router = router
         self.session = session
         self.history = history
         self.securityState = securityState
+        self.executionLedger = executionLedger
+        self.logger = logger
     }
 
     var terminalSession: TerminalSession {
@@ -28,6 +34,7 @@ final class TerminalEngine: ObservableObject {
         let trimmed = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmed.isEmpty else {
+            logger.warning("Rejected empty command.")
             return
         }
 
@@ -47,20 +54,48 @@ final class TerminalEngine: ObservableObject {
             return
         }
 
+        history.add(trimmed)
+        session.appendCommandEcho(trimmed)
+
         do {
-            try router.route(
+            let result = try router.route(
                 trimmed,
-                session: session,
-                history: history,
                 securityState: securityState
             )
-        } catch let error as CommandRouterError {
-            handleRouterError(error)
-        } catch {
-            session.appendOutput(
-                "Execution failed due to an unexpected terminal error.",
-                kind: .error
+
+            let responseForLedger = result.output ?? "[NO_OUTPUT]"
+
+            try executionLedger.append(
+                request: trimmed,
+                response: responseForLedger
             )
+
+            logger.security("Ledger commit succeeded for command: \(trimmed)")
+
+            if result.shouldClearBeforeRender {
+                session.clear()
+            }
+
+            if result.shouldLockSystem {
+                securityState.lock()
+                session.lock()
+            }
+
+            if let output = result.output, !output.isEmpty {
+                session.appendOutput(output, kind: .standard)
+            }
+        } catch let error as LedgerError {
+            logger.security("Ledger commit failed for command: \(trimmed)")
+            securityState.markAISInvalid()
+            executionLedger.lock()
+            session.appendOutput("CHAIN VALIDATION FAILURE — SYSTEM HALTED", kind: .error)
+            session.appendOutput(String(describing: error), kind: .error)
+        } catch let error as ExecutionError {
+            logger.error("Execution routing failed for command: \(trimmed)")
+            session.appendOutput(String(describing: error), kind: .error)
+        } catch {
+            logger.error("Unexpected execution failure for command: \(trimmed)")
+            session.appendOutput("UNEXPECTED EXECUTION FAILURE", kind: .error)
         }
     }
 
@@ -73,22 +108,6 @@ final class TerminalEngine: ObservableObject {
             "Type 'help' to view available commands.",
             kind: .system
         )
-    }
-
-    private func handleRouterError(_ error: CommandRouterError) {
-        switch error {
-        case .emptyCommand:
-            break
-
-        case .unknownCommand(let command):
-            session.appendOutput(
-                "Unknown command: \(command)",
-                kind: .error
-            )
-            session.appendOutput(
-                "Type 'help' to view available commands.",
-                kind: .system
-            )
-        }
+        logger.security("Terminal engine activated after deterministic boot validation.")
     }
 }

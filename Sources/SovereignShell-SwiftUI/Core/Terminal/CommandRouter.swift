@@ -1,78 +1,60 @@
 import Foundation
 
-enum CommandRouterError: Error, Equatable {
-    case emptyCommand
-    case unknownCommand(command: String)
-}
+final class CommandRouter {
 
-@MainActor
-struct CommandRouter {
     func route(
-        _ rawInput: String,
-        session: TerminalSession,
-        history: CommandHistory,
+        _ rawCommand: String,
         securityState: SecurityState
-    ) throws {
-        let trimmed = rawInput.trimmingCharacters(in: .whitespacesAndNewlines)
+    ) throws -> ExecutionResult {
+        let parts = parse(rawCommand)
 
-        guard !trimmed.isEmpty else {
-            throw CommandRouterError.emptyCommand
+        guard let command = parts.first else {
+            throw ExecutionError.emptyCommand(raw: rawCommand)
         }
 
-        history.add(trimmed)
-        session.appendCommandEcho(trimmed)
-
-        let components = parse(trimmed)
-        guard let command = components.first?.lowercased() else {
-            throw CommandRouterError.emptyCommand
-        }
-
-        let arguments = Array(components.dropFirst())
+        let arguments = Array(parts.dropFirst())
 
         switch command {
         case "help":
-            handleHelp(session: session)
+            return ExecutionResult(
+                output: """
+Available commands:
+  help  - Show this help message
+  echo  - Echo text back to the terminal
+  clear - Clear terminal output
+  lock  - Lock the terminal
+"""
+            )
 
         case "echo":
-            handleEcho(arguments: arguments, session: session)
+            return ExecutionResult(
+                output: arguments.joined(separator: " ")
+            )
 
         case "clear":
-            handleClear(session: session)
+            return ExecutionResult(
+                shouldClearBeforeRender: true,
+                output: nil
+            )
 
         case "lock":
-            handleLock(session: session, securityState: securityState)
+            return ExecutionResult(
+                output: "SYSTEM LOCK ENGAGED",
+                shouldLockSystem: true
+            )
 
         default:
-            throw CommandRouterError.unknownCommand(command: command)
+            throw ExecutionError.routingFailed(
+                command: command,
+                reason: "Unknown command"
+            )
         }
     }
 
     private func parse(_ input: String) -> [String] {
         input
-            .split(whereSeparator: { $0.isWhitespace })
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(whereSeparator: \.isWhitespace)
             .map(String.init)
-    }
-
-    private func handleHelp(session: TerminalSession) {
-        session.appendOutput("Available commands:", kind: .system)
-        session.appendOutput("  help  - Show available commands", kind: .standard)
-        session.appendOutput("  echo  - Echo arguments back to the terminal", kind: .standard)
-        session.appendOutput("  clear - Clear terminal output", kind: .standard)
-        session.appendOutput("  lock  - Lock the session", kind: .standard)
-    }
-
-    private func handleEcho(arguments: [String], session: TerminalSession) {
-        let output = arguments.joined(separator: " ")
-        session.appendOutput(output, kind: .standard)
-    }
-
-    private func handleClear(session: TerminalSession) {
-        session.clear()
-    }
-
-    private func handleLock(session: TerminalSession, securityState: SecurityState) {
-        securityState.lock()
-        session.lock()
-        session.appendOutput("Session locked.", kind: .system)
     }
 }
