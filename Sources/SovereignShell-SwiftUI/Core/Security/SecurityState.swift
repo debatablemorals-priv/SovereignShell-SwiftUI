@@ -5,28 +5,21 @@ import Combine
 final class SecurityState: ObservableObject {
     @Published private(set) var isLocked: Bool
     @Published private(set) var isAISValid: Bool
-    @Published private(set) var isOAuthValid: Bool
-    @Published private(set) var runtimeViolationDetected: Bool
 
     init(
         isLocked: Bool = false,
-        isAISValid: Bool = true,
-        isOAuthValid: Bool = false,
-        runtimeViolationDetected: Bool = false
+        isAISValid: Bool = false
     ) {
         self.isLocked = isLocked
         self.isAISValid = isAISValid
-        self.isOAuthValid = isOAuthValid
-        self.runtimeViolationDetected = runtimeViolationDetected
     }
 
-    func lock() {
-        isLocked = true
+    var canAcceptInput: Bool {
+        !isLocked && isAISValid
     }
 
-    func unlock() {
-        guard isAISValid && !runtimeViolationDetected else { return }
-        isLocked = false
+    func markAISValid() {
+        isAISValid = true
     }
 
     func markAISInvalid() {
@@ -34,28 +27,24 @@ final class SecurityState: ObservableObject {
         isLocked = true
     }
 
-    func markAISValid() {
-        isAISValid = true
-    }
-
-    func markOAuthValid() {
-        isOAuthValid = true
-    }
-
-    func markOAuthInvalid() {
-        isOAuthValid = false
-    }
-
-    func markRuntimeViolation() {
-        runtimeViolationDetected = true
+    func lock() {
         isLocked = true
     }
 
-    func clearRuntimeViolation() {
-        runtimeViolationDetected = false
+    func unlockIfTrusted() {
+        guard isAISValid else {
+            isLocked = true
+            return
+        }
+
+        isLocked = false
     }
 
-    var canAcceptInput: Bool {
-        isAISValid && !isLocked && !runtimeViolationDetected
+    func resetForTesting(
+        isLocked: Bool = false,
+        isAISValid: Bool = false
+    ) {
+        self.isLocked = isLocked
+        self.isAISValid = isAISValid
     }
 }
