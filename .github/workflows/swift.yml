@@ -1,4 +1,4 @@
-name: Swift Build
+name: Swift Build and Smoke Tests
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
     branches: [ main ]
 
 concurrency:
-  group: swift-build-${{ github.ref }}
+  group: swift-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  smoke:
     runs-on: macos-14
     timeout-minutes: 15
 
@@ -25,5 +25,8 @@ jobs:
       - name: Build app target
         run: swift build --target SovereignShell-SwiftUI --verbose
 
-      - name: Build test target without running tests
+      - name: Build tests
         run: swift build --build-tests --verbose
+
+      - name: Run curated smoke tests
+        run: swift test --filter CISmokeTests --verbose
