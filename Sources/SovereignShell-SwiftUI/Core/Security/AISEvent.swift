@@ -1,10 +1,8 @@
 import Foundation
 import CryptoKit
 
-/// AISEvent represents a deterministic trust event recorded by AIS.
-///
-/// The peerBindingToken is required for all events but may be empty for
-/// non-handoff events. Handoff events must supply a non-empty token.
+/// AISEvent represents a minimal trust attestation recorded by AIS.
+/// AIS acts as a deterministic notary for trust continuity.
 
 struct AISEvent: Codable, Equatable {
 
@@ -12,7 +10,6 @@ struct AISEvent: Codable, Equatable {
     let eventType: AISEventType
     let trustState: AISTrustState
     let handoffClass: AISHandoffClass
-    let peerBindingToken: String
     let previousHash: String
     let envelopeHash: String
 
@@ -21,7 +18,6 @@ struct AISEvent: Codable, Equatable {
         eventType: AISEventType,
         trustState: AISTrustState,
         handoffClass: AISHandoffClass = .none,
-        peerBindingToken: String = "",
         previousHash: String
     ) {
 
@@ -29,7 +25,6 @@ struct AISEvent: Codable, Equatable {
         self.eventType = eventType
         self.trustState = trustState
         self.handoffClass = handoffClass
-        self.peerBindingToken = peerBindingToken
         self.previousHash = previousHash
 
         self.envelopeHash = AISEvent.computeEnvelopeHash(
@@ -37,7 +32,6 @@ struct AISEvent: Codable, Equatable {
             eventType: eventType,
             trustState: trustState,
             handoffClass: handoffClass,
-            peerBindingToken: peerBindingToken,
             previousHash: previousHash
         )
     }
@@ -47,7 +41,6 @@ struct AISEvent: Codable, Equatable {
         eventType: AISEventType,
         trustState: AISTrustState,
         handoffClass: AISHandoffClass,
-        peerBindingToken: String,
         previousHash: String
     ) -> String {
 
@@ -56,7 +49,6 @@ struct AISEvent: Codable, Equatable {
             eventType.rawValue,
             trustState.rawValue,
             handoffClass.rawValue,
-            peerBindingToken,
             previousHash
         ].joined(separator: "|")
 
