@@ -91,7 +91,6 @@ final class TerminalEngine: ObservableObject {
             }
 
         } catch let error as LedgerError {
-
             logger.security("AIS ledger failure detected for command: \(trimmed)")
 
             do {
@@ -120,7 +119,6 @@ final class TerminalEngine: ObservableObject {
                     String(describing: error),
                     kind: .error
                 )
-
             } catch {
                 logger.security("AIS breach handling failed.")
                 session.lock()
@@ -128,14 +126,12 @@ final class TerminalEngine: ObservableObject {
             }
 
         } catch let error as ExecutionError {
-
             logger.error("Execution routing failed for command: \(trimmed)")
             session.appendOutput(String(describing: error), kind: .error)
 
         } catch {
-
-            logger.error("Unexpected execution failure for command: \(trimmed)"
-            session.appendOutput("UNEXPECTED EXECUTION FAILURE", kind: .error)
+            logger.error("Unexpected execution failure for command: \(trimmed)")
+           session.appendOutput("UNEXPECTED EXECUTION FAILURE", kind: .error)
         }
     }
 
