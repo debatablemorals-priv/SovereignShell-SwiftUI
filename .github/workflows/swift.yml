@@ -25,5 +25,5 @@ jobs:
       - name: Build
         run: swift build --verbose
 
-      - name: Test
-        run: swift test --parallel --num-workers 1 --verbose
+      - name: Run isolated failing test
+        run: swift test --parallel --num-workers 1 --verbose --filter AISEnvironmentalChaosTests/testBreachAfterEnvironmentalCorruptionLocksAIS
