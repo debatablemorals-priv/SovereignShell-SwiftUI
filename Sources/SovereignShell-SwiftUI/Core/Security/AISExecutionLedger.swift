@@ -4,6 +4,8 @@ import CryptoKit
 final class AISExecutionLedger {
     private let store: LedgerStore
     private let logger: SecureLogger
+    private let stateLock = NSRecursiveLock()
+
     private var rollbackCounter: UInt64
     private var isLocked: Bool = false
 
@@ -18,6 +20,9 @@ final class AISExecutionLedger {
     }
 
     func bootstrap() throws {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+
         do {
             let entries = try store.load()
             try LedgerChainValidator.validate(entries)
@@ -49,18 +54,49 @@ final class AISExecutionLedger {
         request: String,
         response: String
     ) throws {
-        let event = AISEventFactory.commandEvent(
-            rollbackCounter: rollbackCounter + 1,
-            previousHash: try currentPreviousHash()
+        stateLock.lock()
+        defer { stateLock.unlock() }
+
+        guard !isLocked else {
+            logger.security("AIS append blocked because ledger is locked.")
+            throw LedgerError.corruptedLedger
+        }
+
+        var entries = try store.load()
+        try LedgerChainValidator.validate(entries)
+
+        guard let previous = entries.last else {
+            logger.security("AIS append failed because genesis is missing.")
+            isLocked = true
+            throw LedgerError.invalidGenesis
+        }
+
+        let nextRollbackCounter = rollbackCounter + 1
+
+        let entry = LedgerEntry(
+            rollbackCounter: nextRollbackCounter,
+            requestHash: canonicalHash(for: request),
+            responseHash: canonicalHash(for: response),
+            previousHash: previous.envelopeHash
         )
 
-        try append(event: event)
+        entries.append(entry)
 
-        _ = canonicalHash(for: request)
-        _ = canonicalHash(for: response)
+        do {
+            try store.save(entries)
+            rollbackCounter = nextRollbackCounter
+            logger.security("AIS event append committed successfully.")
+        } catch {
+            logger.security("AIS atomic commit failed. Execution halted.")
+            isLocked = true
+            throw LedgerError.persistenceFailure
+        }
     }
 
     func append(event: AISEvent) throws {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+
         guard !isLocked else {
             logger.security("AIS append blocked because ledger is locked.")
             throw LedgerError.corruptedLedger
@@ -84,11 +120,13 @@ final class AISExecutionLedger {
         let entry = LedgerEntry(
             rollbackCounter: event.rollbackCounter,
             requestHash: canonicalHash(for: event.eventType.rawValue),
-            responseHash: canonicalHash(for: event.trustState.rawValue + "|" + event.handoffClass.rawValue),
+            responseHash: canonicalHash(
+                for: event.trustState.rawValue + "|" + event.handoffClass.rawValue
+            ),
             previousHash: event.previousHash
         )
 
-        entries.append(entry)
+ entries.append(entry)
 
         do {
             try store.save(entries)
@@ -103,26 +141,35 @@ final class AISExecutionLedger {
 
     @discardableResult
     func handleSecurityEvent(_ securityEvent: AISSecurityEvent) throws -> AISSecretDisposition {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+
         let disposition = AISBreachDetector.disposition(for: securityEvent)
         let eventType = AISBreachDetector.eventType(for: securityEvent)
         let trustState = AISBreachDetector.trustState(for: securityEvent)
-
-        isLocked = true
 
         let event = AISEvent(
             rollbackCounter: rollbackCounter + 1,
             eventType: eventType,
             trustState: trustState,
             handoffClass: .none,
-            previousHash: try currentPreviousHash()
+            previousHash: try currentPreviousHashLocked()
         )
 
-        try append(event: event)
-        logger.security("AIS security event handled: \(eventType.rawValue)")
+        do {
+            try append(event: event)
+            logger.security("AIS security event handled: \(eventType.rawValue)")
+        } finally: do {
+            isLocked = true
+        }
 
-        return disposition}
+        return disposition
+    }
 
     func verifyAgainstRollbackCounter(_ expectedRollbackCounter: UInt64) throws {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+
         let entries = try store.load()
         try LedgerChainValidator.validate(entries)
 
@@ -140,20 +187,29 @@ final class AISExecutionLedger {
     }
 
     func currentRollbackCounter() -> UInt64 {
-        rollbackCounter
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return rollbackCounter
     }
 
     func lockedState() -> Bool {
-        isLocked
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return isLocked
     }
 
     func lock() {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+
         isLocked = true
         logger.security("AIS ledger manually locked.")
     }
 
     func currentLedgerPreviousHash() throws -> String {
-        try currentPreviousHash()
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return try currentPreviousHashLocked()
     }
 
     private func makeGenesisEntry() -> LedgerEntry {
@@ -165,7 +221,7 @@ final class AISExecutionLedger {
         )
     }
 
-    private func currentPreviousHash() throws -> String {
+    private func currentPreviousHashLocked() throws -> String {
         let entries = try store.load()
         try LedgerChainValidator.validate(entries)
 
