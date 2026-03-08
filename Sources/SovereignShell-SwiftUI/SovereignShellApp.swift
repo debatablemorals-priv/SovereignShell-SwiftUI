@@ -2,7 +2,6 @@ import SwiftUI
 
 @main
 struct SovereignShellApp: App {
-
     @StateObject
     private var container = AppContainer()
 
