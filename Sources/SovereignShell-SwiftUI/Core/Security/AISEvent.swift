@@ -7,6 +7,7 @@ import CryptoKit
 struct AISEvent: Codable, Equatable {
 
     let rollbackCounter: UInt64
+    let timestamp: UInt64
     let eventType: AISEventType
     let trustState: AISTrustState
     let handoffClass: AISHandoffClass
@@ -15,6 +16,7 @@ struct AISEvent: Codable, Equatable {
 
     init(
         rollbackCounter: UInt64,
+        timestamp: UInt64 = UInt64(Date().timeIntervalSince1970),
         eventType: AISEventType,
         trustState: AISTrustState,
         handoffClass: AISHandoffClass = .none,
@@ -22,6 +24,7 @@ struct AISEvent: Codable, Equatable {
     ) {
 
         self.rollbackCounter = rollbackCounter
+        self.timestamp = timestamp
         self.eventType = eventType
         self.trustState = trustState
         self.handoffClass = handoffClass
@@ -29,6 +32,7 @@ struct AISEvent: Codable, Equatable {
 
         self.envelopeHash = AISEvent.computeEnvelopeHash(
             rollbackCounter: rollbackCounter,
+            timestamp: timestamp,
             eventType: eventType,
             trustState: trustState,
             handoffClass: handoffClass,
@@ -38,6 +42,7 @@ struct AISEvent: Codable, Equatable {
 
     private static func computeEnvelopeHash(
         rollbackCounter: UInt64,
+        timestamp: UInt64,
         eventType: AISEventType,
         trustState: AISTrustState,
         handoffClass: AISHandoffClass,
@@ -46,6 +51,7 @@ struct AISEvent: Codable, Equatable {
 
         let canonical = [
             String(rollbackCounter),
+            String(timestamp),
             eventType.rawValue,
             trustState.rawValue,
             handoffClass.rawValue,
