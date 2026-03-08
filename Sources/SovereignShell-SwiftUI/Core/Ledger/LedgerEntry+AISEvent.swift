@@ -5,11 +5,34 @@ extension LedgerEntry {
     init(event: AISEvent) {
         self.init(
             rollbackCounter: event.rollbackCounter,
-            requestHash: Self.hash(event.eventType.rawValue),
-            responseHash: Self.hash(
-                event.trustState.rawValue + "|" + event.handoffClass.rawValue
+            requestHash: Self.hash(
+                [
+                    event.eventType.rawValue,
+                    event.operationClass?.rawValue ?? "",
+                    event.bindingID ?? "",
+                    event.sandboxMeasurement ?? ""
+                ].joined(separator: "|")
             ),
-            previousHash: event.previousHash
+            responseHash: Self.hash(
+                [
+                    event.trustState.rawValue,
+                    event.handoffClass.rawValue,
+                    event.capabilityClass?.rawValue ?? "",
+                    event.terminalMeasurement ?? ""
+                ].joined(separator: "|")
+            ),
+            previousHash: event.previousHash,
+            eventTypeRaw: event.eventType.rawValue,
+            trustStateRaw: event.trustState.rawValue,
+            handoffClassRaw: event.handoffClass.rawValue,
+            operationClassRaw: event.operationClass?.rawValue,
+            capabilityClassRaw: event.capabilityClass?.rawValue,
+            policyVersion: event.policyVersion?.rawValue,
+            ledgerDomain: event.ledgerDomain?.rawValue,
+            bindingID: event.bindingID,
+            sandboxMeasurement: event.sandboxMeasurement,
+            terminalMeasurement: event.terminalMeasurement,
+            attestationHash: event.attestationHash
         )
     }
 
@@ -17,11 +40,19 @@ extension LedgerEntry {
         AISEvent(
             rollbackCounter: rollbackCounter,
             timestamp: UInt64(max(0, Int64(timestamp.timeIntervalSince1970))),
-            eventType: AISEventType.command,
-            trustState: AISTrustState.trusted,
-            handoffClass: AISHandoffClass.none,
+            eventType: AISEventType(rawValue: eventTypeRaw ?? "") ?? .command,
+            trustState: AISTrustState(rawValue: trustStateRaw ?? "") ?? .trusted,
+            handoffClass: AISHandoffClass(rawValue: handoffClassRaw ?? "") ?? .none,
             previousHash: previousHash,
-            envelopeHash: envelopeHash
+            envelopeHash: envelopeHash,
+            operationClass: operationClassRaw.flatMap(AISOperationClass.init(rawValue:)),
+            capabilityClass: capabilityClassRaw.flatMap(AISCapabilityClass.init(rawValue:)),
+            policyVersion: policyVersion.flatMap(AISPolicyVersion.init(rawValue:)),
+            ledgerDomain: ledgerDomain.flatMap(AISLedgerDomain.init(rawValue:)),
+            bindingID: bindingID,
+            sandboxMeasurement: sandboxMeasurement,
+            terminalMeasurement: terminalMeasurement,
+            attestationHash: attestationHash
         )
     }
 

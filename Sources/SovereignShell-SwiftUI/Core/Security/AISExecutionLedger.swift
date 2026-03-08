@@ -6,6 +6,9 @@ final class AISExecutionLedger {
     private let logger: SecureLogger
     private let stateLock = NSRecursiveLock()
 
+    private let policyVersion: AISPolicyVersion = .v1
+    private let ledgerDomain: AISLedgerDomain = .sandboxTerminalV1
+
     private var rollbackCounter: UInt64
     private var isLocked: Bool = false
 
@@ -39,7 +42,7 @@ final class AISExecutionLedger {
 
             logger.security("AIS bootstrap verification passed.")
         } catch LedgerError.ledgerNotFound {
-            let genesis = makeGenesisEntry()
+            let genesis = try makeGenesisEntry()
             try store.save([genesis])
             rollbackCounter = genesis.rollbackCounter
             logger.security("AIS genesis entry created deterministically.")
@@ -50,10 +53,7 @@ final class AISExecutionLedger {
         }
     }
 
-    func append(
-        request: String,
-        response: String
-    ) throws {
+    func append(request: String, response: String) throws {
         stateLock.lock()
         defer { stateLock.unlock() }
 
@@ -72,12 +72,31 @@ final class AISExecutionLedger {
         }
 
         let nextRollbackCounter = rollbackCounter + 1
+        let envelope = try makeAttestationEnvelope(
+            rollbackCounter: nextRollbackCounter,
+            operationClass: .commandExecution,
+            capabilityClass: .none,
+            handoffClass: .none,
+            trustState: .trusted,
+            previousHash: previous.envelopeHash
+        )
 
         let entry = LedgerEntry(
             rollbackCounter: nextRollbackCounter,
             requestHash: canonicalHash(for: request),
             responseHash: canonicalHash(for: response),
-            previousHash: previous.envelopeHash
+            previousHash: previous.envelopeHash,
+            eventTypeRaw: AISEventType.command.rawValue,
+            trustStateRaw: AISTrustState.trusted.rawValue,
+            handoffClassRaw: AISHandoffClass.none.rawValue,
+            operationClassRaw: envelope.operationClass.rawValue,
+            capabilityClassRaw: envelope.capabilityClass.rawValue,
+            policyVersion: envelope.policyVersion.rawValue,
+            ledgerDomain: envelope.ledgerDomain.rawValue,
+            bindingID: envelope.bindingID,
+            sandboxMeasurement: envelope.sandboxMeasurement,
+            terminalMeasurement: envelope.terminalMeasurement,
+            attestationHash: envelope.attestationHash
         )
 
         entries.append(entry)
@@ -117,6 +136,15 @@ final class AISExecutionLedger {
             throw LedgerError.corruptedLedger
         }
 
+        if let bindingID = event.bindingID {
+            let currentBinding = try environmentBinding()
+            guard bindingID == currentBinding.bindingID.rawValue else {
+                logger.security("AIS environment binding mismatch detected.")
+                isLocked = true
+                throw LedgerError.rollbackViolation
+            }
+        }
+
         let entry = LedgerEntry(event: event)
         entries.append(entry)
 
@@ -140,6 +168,7 @@ final class AISExecutionLedger {
         let eventType = AISBreachDetector.eventType(for: securityEvent)
         let trustState = AISBreachDetector.trustState(for: securityEvent)
         let nextRollbackCounter = rollbackCounter + 1
+        let binding = try environmentBinding()
 
         let event = AISEvent(
             rollbackCounter: nextRollbackCounter,
@@ -147,7 +176,14 @@ final class AISExecutionLedger {
             eventType: eventType,
             trustState: trustState,
             handoffClass: .none,
-            previousHash: try currentPreviousHashLocked()
+            previousHash: try currentPreviousHashLocked(),
+            operationClass: .securityEvent,
+            capabilityClass: .none,
+            policyVersion: binding.policyVersion,
+            ledgerDomain: binding.ledgerDomain,
+            bindingID: binding.bindingID.rawValue,
+            sandboxMeasurement: binding.measurement.sandboxMeasurement,
+            terminalMeasurement: binding.measurement.terminalMeasurement
         )
 
         do {
@@ -197,23 +233,41 @@ final class AISExecutionLedger {
     func lock() {
         stateLock.lock()
         defer { stateLock.unlock() }
-
         isLocked = true
         logger.security("AIS ledger manually locked.")
     }
 
-    func currentLedgerPreviousHash() throws -> String {
-        stateLock.lock()
-        defer { stateLock.unlock() }
-        return try currentPreviousHashLocked()
+    func currentBindingID() throws -> String {
+        try environmentBinding().bindingID.rawValue
     }
 
-    private func makeGenesisEntry() -> LedgerEntry {
-        LedgerEntry(
+    private func makeGenesisEntry() throws -> LedgerEntry {
+        let binding = try environmentBinding()
+
+        return LedgerEntry(
             rollbackCounter: rollbackCounter,
             requestHash: canonicalHash(for: "GENESIS_REQUEST"),
             responseHash: canonicalHash(for: "GENESIS_RESPONSE"),
-            previousHash: String(repeating: "0", count: 64)
+            previousHash: String(repeating: "0", count: 64),
+            eventTypeRaw: AISEventType.boot.rawValue,
+            trustStateRaw: AISTrustState.trusted.rawValue,
+            handoffClassRaw: AISHandoffClass.none.rawValue,
+            operationClassRaw: AISOperationClass.boot.rawValue,
+            capabilityClassRaw: AISCapabilityClass.none.rawValue,
+            policyVersion: binding.policyVersion.rawValue,
+            ledgerDomain: binding.ledgerDomain.rawValue,
+            bindingID: binding.bindingID.rawValue,
+            sandboxMeasurement: binding.measurement.sandboxMeasurement,
+            terminalMeasurement: binding.measurement.terminalMeasurement,
+            attestationHash: canonicalHash(
+                for: [
+                    binding.bindingID.rawValue,
+                    binding.measurement.sandboxMeasurement,
+                    binding.measurement.terminalMeasurement,
+                    policyVersion.rawValue,
+                    ledgerDomain.rawValue
+                ].joined(separator: "|")
+            )
         )
     }
 
@@ -228,6 +282,68 @@ final class AISExecutionLedger {
         }
 
         return previous.envelopeHash
+    }
+
+    private func environmentBinding() throws -> AISEnvironmentBinding {
+        let anchor = try AISRootAnchor.loadOrCreate(at: rootAnchorURL())
+        let measurement = runtimeMeasurement()
+
+        return AISEnvironmentBinding(
+            rootAnchor: anchor,
+            measurement: measurement,
+            policyVersion: policyVersion,
+            ledgerDomain: ledgerDomain
+        )
+    }
+
+    private func makeAttestationEnvelope(
+        rollbackCounter: UInt64,
+        operationClass: AISOperationClass,
+        capabilityClass: AISCapabilityClass,
+        handoffClass: AISHandoffClass,
+        trustState: AISTrustState,
+        previousHash: String
+    ) throws -> AISAttestationEnvelope {
+        let binding = try environmentBinding()
+
+        return AISAttestationEnvelope(
+            rollbackCounter: rollbackCounter,
+            timestamp: UInt64(Date().timeIntervalSince1970),
+            operationClass: operationClass,
+            capabilityClass: capabilityClass,
+            handoffClass: handoffClass,
+            trustState: trustState,
+            bindingID: binding.bindingID.rawValue,
+            sandboxMeasurement: binding.measurement.sandboxMeasurement,
+            terminalMeasurement: binding.measurement.terminalMeasurement,
+            policyVersion: binding.policyVersion,
+            ledgerDomain: binding.ledgerDomain,
+            previousHash: previousHash
+        )
+    }
+
+    private func runtimeMeasurement() -> AISRuntimeMeasurement {
+        AISRuntimeMeasurement(
+            sandboxComponents: [
+                "ais-sandbox",
+                "ledger-scope:\(store.fileURL.deletingLastPathComponent().lastPathComponent)",
+                "policy:\(policyVersion.rawValue)",
+                "domain:\(ledgerDomain.rawValue)"
+            ],
+            terminalComponents: [
+                "ais-terminal",
+                "runtime:\(String(describing: AISExecutionLedger.self))",
+                "logger:\(String(describing: SecureLogger.self))",
+                "locked:\(isLocked)",
+                "platform:\(ProcessInfo.processInfo.operatingSystemVersionString)"
+            ]
+        )
+    }
+
+    private func rootAnchorURL() -> URL {
+        store.fileURL
+            .deletingLastPathComponent()
+            .appendingPathComponent(".ais-root-anchor")
     }
 
     private func canonicalHash(for value: String) -> String {

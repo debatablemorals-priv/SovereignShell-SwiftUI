@@ -10,6 +10,15 @@ struct AISEvent: Codable, Equatable {
     let previousHash: String
     let envelopeHash: String
 
+    let operationClass: AISOperationClass?
+    let capabilityClass: AISCapabilityClass?
+    let policyVersion: AISPolicyVersion?
+    let ledgerDomain: AISLedgerDomain?
+    let bindingID: String?
+    let sandboxMeasurement: String?
+    let terminalMeasurement: String?
+    let attestationHash: String?
+
     init(
         rollbackCounter: UInt64,
         timestamp: UInt64,
@@ -17,7 +26,15 @@ struct AISEvent: Codable, Equatable {
         trustState: AISTrustState,
         handoffClass: AISHandoffClass,
         previousHash: String,
-        envelopeHash: String? = nil
+        envelopeHash: String? = nil,
+        operationClass: AISOperationClass? = nil,
+        capabilityClass: AISCapabilityClass? = nil,
+        policyVersion: AISPolicyVersion? = nil,
+        ledgerDomain: AISLedgerDomain? = nil,
+        bindingID: String? = nil,
+        sandboxMeasurement: String? = nil,
+        terminalMeasurement: String? = nil,
+        attestationHash: String? = nil
     ) {
         self.rollbackCounter = rollbackCounter
         self.timestamp = timestamp
@@ -25,23 +42,56 @@ struct AISEvent: Codable, Equatable {
         self.trustState = trustState
         self.handoffClass = handoffClass
         self.previousHash = previousHash
+        self.operationClass = operationClass
+        self.capabilityClass = capabilityClass
+        self.policyVersion = policyVersion
+        self.ledgerDomain = ledgerDomain
+        self.bindingID = bindingID
+        self.sandboxMeasurement = sandboxMeasurement
+        self.terminalMeasurement = terminalMeasurement
+
+        let derivedAttestationHash = attestationHash ?? Self.computeAttestationHash(
+            rollbackCounter: rollbackCounter,
+            timestamp: timestamp,
+            eventType: eventType,
+            trustState: trustState,
+            handoffClass: handoffClass,
+            previousHash: previousHash,
+            operationClass: operationClass,
+            capabilityClass: capabilityClass,
+            policyVersion: policyVersion,
+            ledgerDomain: ledgerDomain,
+            bindingID: bindingID,
+            sandboxMeasurement: sandboxMeasurement,
+            terminalMeasurement: terminalMeasurement
+        )
+
+        self.attestationHash = derivedAttestationHash
         self.envelopeHash = envelopeHash ?? Self.computeEnvelopeHash(
             rollbackCounter: rollbackCounter,
             timestamp: timestamp,
             eventType: eventType,
             trustState: trustState,
             handoffClass: handoffClass,
-            previousHash: previousHash
+            previousHash: previousHash,
+            attestationHash: derivedAttestationHash
         )
     }
 
-    private static func computeEnvelopeHash(
+    private static func computeAttestationHash(
         rollbackCounter: UInt64,
         timestamp: UInt64,
         eventType: AISEventType,
         trustState: AISTrustState,
         handoffClass: AISHandoffClass,
-        previousHash: String
+        previousHash: String,
+        operationClass: AISOperationClass?,
+        capabilityClass: AISCapabilityClass?,
+        policyVersion: AISPolicyVersion?,
+        ledgerDomain: AISLedgerDomain?,
+        bindingID: String?,
+        sandboxMeasurement: String?,
+        terminalMeasurement: String?
     ) -> String {
         let canonical = [
             String(rollbackCounter),
@@ -49,7 +99,37 @@ struct AISEvent: Codable, Equatable {
             eventType.rawValue,
             trustState.rawValue,
             handoffClass.rawValue,
-            previousHash
+            previousHash,
+            operationClass?.rawValue ?? "",
+            capabilityClass?.rawValue ?? "",
+            policyVersion?.rawValue ?? "",
+            ledgerDomain?.rawValue ?? "",
+            bindingID ?? "",
+            sandboxMeasurement ?? "",
+            terminalMeasurement ?? ""
+        ].joined(separator: "|")
+
+        let digest = SHA256.hash(data: Data(canonical.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
+ }
+
+    private static func computeEnvelopeHash(
+        rollbackCounter: UInt64,
+        timestamp: UInt64,
+        eventType: AISEventType,
+        trustState: AISTrustState,
+        handoffClass: AISHandoffClass,
+        previousHash: String,
+        attestationHash: String
+    ) -> String {
+        let canonical = [
+            String(rollbackCounter),
+            String(timestamp),
+            eventType.rawValue,
+            trustState.rawValue,
+            handoffClass.rawValue,
+            previousHash,
+            attestationHash
         ].joined(separator: "|")
 
         let digest = SHA256.hash(data: Data(canonical.utf8))

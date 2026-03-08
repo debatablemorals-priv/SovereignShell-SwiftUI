@@ -1,5 +1,4 @@
 import Foundation
-import CryptoKit
 
 enum LedgerChainValidator {
     static func validate(_ entries: [LedgerEntry]) throws {
@@ -22,7 +21,6 @@ enum LedgerChainValidator {
         }
 
         var previous = genesis
-
         for current in entries.dropFirst() {
             guard current.previousHash == previous.envelopeHash else {
                 throw LedgerError.corruptedLedger
@@ -41,14 +39,22 @@ enum LedgerChainValidator {
     }
 
     private static func recomputeEnvelopeHash(for entry: LedgerEntry) -> String {
-        let payload = [
-            String(entry.rollbackCounter),
-            entry.requestHash,
-            entry.responseHash,
-            entry.previousHash
-        ].joined(separator: "|")
-
-        let digest = SHA256.hash(data: Data(payload.utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
+        LedgerEntry.computeEnvelopeHash(
+            rollbackCounter: entry.rollbackCounter,
+            requestHash: entry.requestHash,
+            responseHash: entry.responseHash,
+            previousHash: entry.previousHash,
+            eventTypeRaw: entry.eventTypeRaw,
+            trustStateRaw: entry.trustStateRaw,
+            handoffClassRaw: entry.handoffClassRaw,
+            operationClassRaw: entry.operationClassRaw,
+            capabilityClassRaw: entry.capabilityClassRaw,
+            policyVersion: entry.policyVersion,
+            ledgerDomain: entry.ledgerDomain,
+            bindingID: entry.bindingID,
+            sandboxMeasurement: entry.sandboxMeasurement,
+            terminalMeasurement: entry.terminalMeasurement,
+            attestationHash: entry.attestationHash
+        )
     }
 }
