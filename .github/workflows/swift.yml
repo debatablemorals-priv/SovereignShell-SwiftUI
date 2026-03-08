@@ -2,30 +2,28 @@ name: Swift Build and Test
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
+
+concurrency:
+  group: swift-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
-    runs-on: macos-latest
+    runs-on: macos-14
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
-
-      - name: Swift version
+      - name: Show Swift version
         run: swift --version
 
-      - name: Clean
-        run: |
-          rm -rf .build .swiftpm
-
       - name: Build
-        run: swift build
+        run: swift build --verbose
 
       - name: Test
-        run: swift test
+        run: swift test --parallel false --verbose
