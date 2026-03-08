@@ -78,3 +78,5 @@ struct AISEventFactory {
         rollbackCounter
     }
 }
+
+// deterministic AIS event factory
