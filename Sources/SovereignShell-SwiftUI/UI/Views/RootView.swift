@@ -1,24 +1,24 @@
 import SwiftUI
 
 struct RootView: View {
-    @StateObject private var container = AppContainer()
-
     var body: some View {
-        ZStack {
-            Color.black
-                .ignoresSafeArea()
+        VStack(spacing: 0) {
+            DevToolbarView()
 
-            VStack(spacing: 0) {
-                DevToolbarView()
+            Divider()
 
-                TerminalView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            TerminalView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                LogPanelView()
+            Divider()
 
-                KeyboardInputBar()
-            }
+            KeyboardInputBar()
+
+            Divider()
+
+            LogPanelView()
+                .frame(maxWidth: .infinity)
+                .frame(height: 220)
         }
-        .environmentObject(container)
     }
 }
