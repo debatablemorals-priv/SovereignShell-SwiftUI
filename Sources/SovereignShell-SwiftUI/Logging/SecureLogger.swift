@@ -1,10 +1,10 @@
 import Foundation
 import Combine
 
-@MainActor
 public final class SecureLogger: ObservableObject {
 
     @Published public private(set) var events: [AuditEvent] = []
+    private let lock = NSLock()
 
     public init() {}
 
@@ -15,7 +15,16 @@ public final class SecureLogger: ObservableObject {
             message: sanitized
         )
 
-        events.append(event)
+        lock.lock()
+        defer { lock.unlock() }
+
+        if Thread.isMainThread {
+            events.append(event)
+        } else {
+            DispatchQueue.main.sync {
+                self.events.append(event)
+            }
+        }
     }
 
     public func info(_ message: String) {
