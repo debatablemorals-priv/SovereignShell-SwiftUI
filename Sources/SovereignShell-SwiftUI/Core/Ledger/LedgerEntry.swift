@@ -28,8 +28,6 @@ public struct LedgerEntry: Codable, Identifiable {
         self.responseHash = responseHash
         self.previousHash = previousHash
         self.envelopeHash = LedgerEntry.computeEnvelopeHash(
-            id: id,
-            timestamp: timestamp,
             rollbackCounter: rollbackCounter,
             requestHash: requestHash,
             responseHash: responseHash,
@@ -38,19 +36,19 @@ public struct LedgerEntry: Codable, Identifiable {
     }
 
     private static func computeEnvelopeHash(
-        id: UUID,
-        timestamp: Date,
         rollbackCounter: UInt64,
         requestHash: String,
         responseHash: String,
         previousHash: String
     ) -> String {
+        let canonical = [
+            String(rollbackCounter),
+            requestHash,
+            responseHash,
+            previousHash
+        ].joined(separator: "|")
 
-        let payload =
-        "\(id.uuidString)|\(timestamp.timeIntervalSince1970)|\(rollbackCounter)|\(requestHash)|\(responseHash)|\(previousHash)"
-
-        let digest = SHA256.hash(data: Data(payload.utf8))
-
+        let digest = SHA256.hash(data: Data(canonical.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
