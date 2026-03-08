@@ -93,45 +93,23 @@ struct AISEvent: Codable, Equatable {
         sandboxMeasurement: String?,
         terminalMeasurement: String?
     ) -> String {
-        let canonical = [
-            String(rollbackCounter),
-            String(timestamp),
-            eventType.rawValue,
-            trustState.rawValue,
-            handoffClass.rawValue,
-            previousHash,
-            operationClass?.rawValue ?? "",
-            capabilityClass?.rawValue ?? "",
-            policyVersion?.rawValue ?? "",
-            ledgerDomain?.rawValue ?? "",
-            bindingID ?? "",
-            sandboxMeasurement ?? "",
-            terminalMeasurement ?? ""
-        ].joined(separator: "|")
+        var components: [String] = []
+        components.append(String(rollbackCounter))
+        components.append(String(timestamp))
+        components.append(eventType.rawValue)
+        components.append(trustState.rawValue)
+        components.append(handoffClass.rawValue)
+        components.append(previousHash)
+        components.append(operationClass?.rawValue ?? "")
+        components.append(capabilityClass?.rawValue ?? "")
+        components.append(policyVersion?.rawValue ?? "")
+        components.append(ledgerDomain?.rawValue ?? "")
+        components.append(bindingID ?? "")
+        components.append(sandboxMeasurement ?? "")
+        components.append(terminalMeasurement ?? "")
+        components.append(attestationHash ?? "")
 
-        let digest = SHA256.hash(data: Data(canonical.utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
- }
-
-    private static func computeEnvelopeHash(
-        rollbackCounter: UInt64,
-        timestamp: UInt64,
-        eventType: AISEventType,
-        trustState: AISTrustState,
-        handoffClass: AISHandoffClass,
-        previousHash: String,
-        attestationHash: String
-    ) -> String {
-        let canonical = [
-            String(rollbackCounter),
-            String(timestamp),
-            eventType.rawValue,
-            trustState.rawValue,
-            handoffClass.rawValue,
-            previousHash,
-            attestationHash
-        ].joined(separator: "|")
-
+        let canonical = components.joined(separator: "|")
         let digest = SHA256.hash(data: Data(canonical.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }

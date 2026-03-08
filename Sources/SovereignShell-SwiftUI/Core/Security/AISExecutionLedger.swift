@@ -75,7 +75,7 @@ final class AISExecutionLedger {
         let envelope = try makeAttestationEnvelope(
             rollbackCounter: nextRollbackCounter,
             operationClass: .commandExecution,
-            capabilityClass: .none,
+            capabilityClass: AISCapabilityClass.none,
             handoffClass: .none,
             trustState: .trusted,
             previousHash: previous.envelopeHash
@@ -178,7 +178,7 @@ final class AISExecutionLedger {
             handoffClass: .none,
             previousHash: try currentPreviousHashLocked(),
             operationClass: .securityEvent,
-            capabilityClass: .none,
+            capabilityClass: AISCapabilityClass.none,
             policyVersion: binding.policyVersion,
             ledgerDomain: binding.ledgerDomain,
             bindingID: binding.bindingID.rawValue,
@@ -235,6 +235,12 @@ final class AISExecutionLedger {
         defer { stateLock.unlock() }
         isLocked = true
         logger.security("AIS ledger manually locked.")
+    }
+
+    func currentLedgerPreviousHash() throws -> String {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return try currentPreviousHashLocked()
     }
 
     func currentBindingID() throws -> String {
