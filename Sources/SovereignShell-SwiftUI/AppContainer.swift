@@ -3,7 +3,6 @@ import Combine
 
 @MainActor
 final class AppContainer: ObservableObject {
-
     let commandHistory: CommandHistory
     let securityState: SecurityState
     let rollbackCounter: RollbackCounter
@@ -48,7 +47,6 @@ final class AppContainer: ObservableObject {
 
         do {
             try executionLedger.bootstrap()
-
             try syncRollbackCounterFromLedger()
 
             try executionLedger.verifyAgainstRollbackCounter(
@@ -70,7 +68,6 @@ final class AppContainer: ObservableObject {
             )
 
             terminalEngine.bootstrap()
-
         } catch {
             securityState.markAISInvalid()
 
