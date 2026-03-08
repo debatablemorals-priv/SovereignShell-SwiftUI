@@ -1,5 +1,7 @@
 import Foundation
+import Combine
 
+@MainActor
 public final class SecureLogger: ObservableObject {
 
     @Published public private(set) var events: [AuditEvent] = []
@@ -7,17 +9,13 @@ public final class SecureLogger: ObservableObject {
     public init() {}
 
     public func log(level: AuditEvent.Level, message: String) {
-
         let sanitized = LogSanitizer.sanitize(message)
-
         let event = AuditEvent(
             level: level,
             message: sanitized
         )
 
-        DispatchQueue.main.async {
-            self.events.append(event)
-        }
+        events.append(event)
     }
 
     public func info(_ message: String) {
