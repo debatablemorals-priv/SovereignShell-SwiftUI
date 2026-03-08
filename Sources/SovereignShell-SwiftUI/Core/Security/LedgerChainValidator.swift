@@ -2,17 +2,21 @@ import Foundation
 import CryptoKit
 
 enum LedgerChainValidator {
+
     static func validate(_ entries: [LedgerEntry]) throws {
+
         guard !entries.isEmpty else {
             throw LedgerError.invalidGenesis
         }
 
         let genesis = entries[0]
 
+        // Genesis must have zeroed previous hash
         guard genesis.previousHash == String(repeating: "0", count: 64) else {
             throw LedgerError.invalidGenesis
         }
 
+        // Genesis hash must be correct
         guard genesis.envelopeHash == recomputeEnvelopeHash(for: genesis) else {
             throw LedgerError.corruptedLedger
         }
@@ -24,14 +28,18 @@ enum LedgerChainValidator {
         var previous = genesis
 
         for current in entries.dropFirst() {
+
+            // Chain pointer must match
             guard current.previousHash == previous.envelopeHash else {
                 throw LedgerError.corruptedLedger
             }
 
+            // Rollback must strictly increase
             guard current.rollbackCounter > previous.rollbackCounter else {
                 throw LedgerError.rollbackViolation
             }
 
+            // Stored envelope hash must match recomputed hash
             guard current.envelopeHash == recomputeEnvelopeHash(for: current) else {
                 throw LedgerError.corruptedLedger
             }
@@ -41,6 +49,7 @@ enum LedgerChainValidator {
     }
 
     private static func recomputeEnvelopeHash(for entry: LedgerEntry) -> String {
+
         let payload = [
             String(entry.rollbackCounter),
             entry.requestHash,
