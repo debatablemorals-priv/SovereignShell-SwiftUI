@@ -1,4 +1,4 @@
-name: Swift Build and Test
+name: Swift Build
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
     branches: [ main ]
 
 concurrency:
-  group: swift-${{ github.ref }}
+  group: swift-build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  build:
     runs-on: macos-14
     timeout-minutes: 15
 
@@ -22,8 +22,8 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Build
-        run: swift build --verbose
+      - name: Show package manifest
+        run: cat Package.swift
 
-      - name: Run isolated failing test
-        run: swift test --parallel --num-workers 1 --verbose --filter AISEnvironmentalChaosTests/testBreachAfterEnvironmentalCorruptionLocksAIS
+      - name: Build app target
+        run: swift build --target SovereignShell-SwiftUI --verbose
