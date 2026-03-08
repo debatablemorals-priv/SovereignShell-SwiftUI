@@ -26,4 +26,4 @@ jobs:
         run: swift build --verbose
 
       - name: Test
-        run: swift test --parallel false --verbose
+        run: swift test --num-workers 1 --verbose
