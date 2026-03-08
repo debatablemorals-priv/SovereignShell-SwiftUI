@@ -117,16 +117,8 @@ final class AISExecutionLedger {
             throw LedgerError.corruptedLedger
         }
 
-        let entry = LedgerEntry(
-            rollbackCounter: event.rollbackCounter,
-            requestHash: canonicalHash(for: event.eventType.rawValue),
-            responseHash: canonicalHash(
-                for: event.trustState.rawValue + "|" + event.handoffClass.rawValue
-            ),
-            previousHash: event.previousHash
-        )
-
- entries.append(entry)
+        let entry = LedgerEntry(event: event)
+        entries.append(entry)
 
         do {
             try store.save(entries)
@@ -147,9 +139,11 @@ final class AISExecutionLedger {
         let disposition = AISBreachDetector.disposition(for: securityEvent)
         let eventType = AISBreachDetector.eventType(for: securityEvent)
         let trustState = AISBreachDetector.trustState(for: securityEvent)
+        let nextRollbackCounter = rollbackCounter + 1
 
         let event = AISEvent(
-            rollbackCounter: rollbackCounter + 1,
+            rollbackCounter: nextRollbackCounter,
+            timestamp: nextRollbackCounter,
             eventType: eventType,
             trustState: trustState,
             handoffClass: .none,
