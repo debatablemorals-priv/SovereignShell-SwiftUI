@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ThemeAuthority {
-
     static let terminalBackground = Color.black
     static let terminalText = Color.white
     static let terminalError = Color.red
