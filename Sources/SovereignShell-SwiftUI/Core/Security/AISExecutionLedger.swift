@@ -159,10 +159,12 @@ final class AISExecutionLedger {
         do {
             try append(event: event)
             logger.security("AIS security event handled: \(eventType.rawValue)")
-        } finally: do {
+        } catch {
             isLocked = true
+            throw error
         }
 
+        isLocked = true
         return disposition
     }
 
