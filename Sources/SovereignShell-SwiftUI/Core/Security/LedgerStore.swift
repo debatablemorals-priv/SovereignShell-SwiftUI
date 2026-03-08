@@ -1,7 +1,7 @@
 import Foundation
 
 final class LedgerStore {
-    private let fileURL: URL
+    let fileURL: URL
     private let fileManager: FileManager
 
     init(
@@ -39,7 +39,6 @@ final class LedgerStore {
 
             let data = try encoder.encode(entries)
             try data.write(to: fileURL, options: .atomic)
-
             try applyPostWriteProtections()
         } catch let error as LedgerError {
             throw error

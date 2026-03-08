@@ -1,12 +1,17 @@
 import XCTest
 @testable import SovereignShell_SwiftUI
 
+@MainActor
 final class TerminalEngineTests: XCTestCase {
-
     func makeTempURL() -> URL {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
-        try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+        try! FileManager.default.createDirectory(
+            at: dir,
+            withIntermediateDirectories: true
+        )
+
         return dir.appendingPathComponent("ledger.chain")
     }
 
@@ -15,8 +20,8 @@ final class TerminalEngineTests: XCTestCase {
         let securityState = SecurityState()
         let session = TerminalSession()
         let logger = SecureLogger()
+        let rollbackCounter = RollbackCounter(initialValue: 0)
         let store = LedgerStore(fileURL: makeTempURL())
-
         let ledger = AISExecutionLedger(
             store: store,
             logger: logger,
@@ -30,6 +35,7 @@ final class TerminalEngineTests: XCTestCase {
             session: session,
             history: history,
             securityState: securityState,
+            rollbackCounter: rollbackCounter,
             executionLedger: ledger,
             logger: logger
         )

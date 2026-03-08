@@ -2,7 +2,6 @@ import XCTest
 @testable import SovereignShell_SwiftUI
 
 final class AISSideChannelTests: XCTestCase {
-
     private func makeLedgerStore(filename: String = UUID().uuidString) -> LedgerStore {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("AISSideChannelTests", isDirectory: true)
@@ -110,15 +109,15 @@ final class AISSideChannelTests: XCTestCase {
         try midStore.save(midEntries)
         try lateStore.save(lateEntries)
 
-        let tEarly = duration {
+        let tEarly = try duration {
             XCTAssertThrowsError(try LedgerChainValidator.validate(earlyStore.load()))
         }
 
-        let tMid = duration {
+        let tMid = try duration {
             XCTAssertThrowsError(try LedgerChainValidator.validate(midStore.load()))
         }
 
-        let tLate = duration {
+        let tLate = try duration {
             XCTAssertThrowsError(try LedgerChainValidator.validate(lateStore.load()))
         }
 
@@ -137,7 +136,7 @@ final class AISSideChannelTests: XCTestCase {
         var timings: [TimeInterval] = []
 
         for i in 0..<1000 {
-            let t = duration {
+            let t = try duration {
                 XCTAssertThrowsError(
                     try ledger.append(request: "blocked\(i)", response: "denied")
                 )
@@ -169,11 +168,11 @@ final class AISSideChannelTests: XCTestCase {
         let replayedEntries = Array((try storeA.load()).prefix(2_000))
         try storeA.save(replayedEntries)
 
-        let tReplay = duration {
+        let tReplay = try duration {
             XCTAssertThrowsError(try ledgerA.verifyAgainstRollbackCounter(10_000))
         }
 
-        let tRollback = duration {
+        let tRollback = try duration {
             XCTAssertThrowsError(try ledgerB.verifyAgainstRollbackCounter(99_999))
         }
 
@@ -203,7 +202,7 @@ final class AISSideChannelTests: XCTestCase {
             _ = try? fresh.bootstrap()
         }
 
-        let replayBootstrapTime = duration {
+        let replayBootstrapTime = try duration {
             let replayed = makeLedger(store: replayStore, rollbackCounter: 5_000)
             XCTAssertThrowsError(try replayed.bootstrap())
         }
@@ -224,7 +223,6 @@ final class AISSideChannelTests: XCTestCase {
             let t = try duration {
                 _ = try ledger.handleSecurityEvent(.runtimeIntegrityFailure)
             }
-
             timings.append(t)
         }
 
@@ -256,13 +254,14 @@ final class AISSideChannelTests: XCTestCase {
             responseHash: corruptEntries[7_500].responseHash,
             previousHash: corruptEntries[7_500].previousHash
         )
+
         try corruptStore.save(corruptEntries)
 
-        let tClean = duration {
+        let tClean = try duration {
             XCTAssertNoThrow(try LedgerChainValidator.validate(cleanStore.load()))
         }
 
-        let tCorrupt = duration {
+        let tCorrupt = try duration {
             XCTAssertThrowsError(try LedgerChainValidator.validate(corruptStore.load()))
         }
 
