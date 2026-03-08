@@ -14,6 +14,7 @@ final class CISmokeTests: XCTestCase {
         XCTAssertNotNil(session)
     }
 
+    @MainActor
     func testCommandHistoryInitializes() {
         let history = CommandHistory()
         XCTAssertNotNil(history)
