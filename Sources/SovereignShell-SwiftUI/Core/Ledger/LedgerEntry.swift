@@ -95,24 +95,24 @@ public struct LedgerEntry: Codable, Identifiable {
         terminalMeasurement: String? = nil,
         attestationHash: String? = nil
     ) -> String {
-        let canonical = [
-            String(rollbackCounter),
-            requestHash,
-            responseHash,
-            previousHash,
-            eventTypeRaw ?? "",
-            trustStateRaw ?? "",
-            handoffClassRaw ?? "",
-            operationClassRaw ?? "",
-            capabilityClassRaw ?? "",
-            policyVersion ?? "",
-            ledgerDomain ?? "",
-            bindingID ?? "",
-            sandboxMeasurement ?? "",
-            terminalMeasurement ?? "",
-            attestationHash ?? ""
-        ].joined(separator: "|")
+        var components: [String] = []
+        components.append(String(rollbackCounter))
+        components.append(requestHash)
+        components.append(responseHash)
+        components.append(previousHash)
+        components.append(eventTypeRaw ?? "")
+        components.append(trustStateRaw ?? "")
+        components.append(handoffClassRaw ?? "")
+        components.append(operationClassRaw ?? "")
+        components.append(capabilityClassRaw ?? "")
+        components.append(policyVersion ?? "")
+         components.append(ledgerDomain ?? "")
+        components.append(bindingID ?? "")
+        components.append(sandboxMeasurement ?? "")
+        components.append(terminalMeasurement ?? "")
+        components.append(attestationHash ?? "")
 
+        let canonical = components.joined(separator: "|")
         let digest = SHA256.hash(data: Data(canonical.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
