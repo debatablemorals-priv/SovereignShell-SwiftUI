@@ -3,98 +3,96 @@ import Combine
 
 @MainActor
 final class TerminalSession: ObservableObject {
-    @Published private(set) var outputLines: [TerminalOutputLine]
-    @Published private(set) var currentPrompt: String
+    @Published private(set) var lines: [TerminalLine]
     @Published private(set) var isLocked: Bool
-    @Published private(set) var sessionIdentifier: UUID
+
+    private let maxBufferLines: Int
 
     init(
-        outputLines: [TerminalOutputLine] = [],
-        currentPrompt: String = ">",
+        lines: [TerminalLine] = [],
         isLocked: Bool = false,
-        sessionIdentifier: UUID = UUID()
+        maxBufferLines: Int = 500
     ) {
-        self.outputLines = outputLines
-        self.currentPrompt = currentPrompt
+        self.lines = lines
         self.isLocked = isLocked
-        self.sessionIdentifier = sessionIdentifier
-    }
-
-    func appendOutput(_ text: String, kind: TerminalOutputKind = .standard) {
-        let trimmed = text.trimmingCharacters(in: .newlines)
-        guard !trimmed.isEmpty else { return }
-
-        outputLines.append(
-            TerminalOutputLine(
-                text: trimmed,
-                kind: kind,
-                timestamp: Date()
-            )
-        )
+        self.maxBufferLines = max(100, maxBufferLines)
     }
 
     func appendCommandEcho(_ command: String) {
-        let trimmed = command.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !isLocked else {
+            return
+        }
 
-        outputLines.append(
-            TerminalOutputLine(
-                text: "\(currentPrompt) \(trimmed)",
-                kind: .command,
-                timestamp: Date()
+        appendLine(
+            TerminalLine(
+                text: "$ \(command)",
+                kind: .command
             )
         )
     }
 
+    func appendOutput(_ output: String, kind: TerminalOutputKind) {
+        let normalized = output.replacingOccurrences(of: "\r\n", with: "\n")
+        let splitLines = normalized.components(separatedBy: "\n")
+
+        if splitLines.isEmpty {
+            appendLine(TerminalLine(text: "", kind: kind))
+            return
+        }
+
+        for line in splitLines {
+            appendLine(
+                TerminalLine(
+                    text: line,
+                    kind: kind
+                )
+            )
+        }
+    }
+
     func clear() {
-        outputLines.removeAll(keepingCapacity: false)
+        guard !isLocked else {
+            return
+        }
+
+        lines.removeAll(keepingCapacity: true)
     }
 
     func lock() {
         isLocked = true
     }
 
-    func unlock() {
+    func unlockForTesting() {
         isLocked = false
     }
 
-    func updatePrompt(_ prompt: String) {
-        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        currentPrompt = trimmed
+    func resetForTesting() {
+        lines.removeAll(keepingCapacity: true)
+        isLocked = false
     }
 
-    func resetSession() {
-        outputLines.removeAll(keepingCapacity: false)
-        currentPrompt = ">"
-        isLocked = false
-        sessionIdentifier = UUID()
+    private func appendLine(_ line: TerminalLine) {
+        lines.append(line)
+
+        if lines.count > maxBufferLines {
+            let overflow = lines.count - maxBufferLines
+            lines.removeFirst(overflow)
+        }
     }
 }
 
-struct TerminalOutputLine: Identifiable, Equatable {
+struct TerminalLine: Identifiable, Equatable {
     let id: UUID
     let text: String
     let kind: TerminalOutputKind
-    let timestamp: Date
 
     init(
         id: UUID = UUID(),
         text: String,
-        kind: TerminalOutputKind,
-        timestamp: Date
+        kind: TerminalOutputKind
     ) {
         self.id = id
         self.text = text
         self.kind = kind
-        self.timestamp = timestamp
     }
-}
-
-enum TerminalOutputKind: Equatable {
-    case standard
-    case command
-    case success
-    case error
-    case system
 }
