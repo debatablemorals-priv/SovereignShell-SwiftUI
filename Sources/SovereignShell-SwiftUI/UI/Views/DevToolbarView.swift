@@ -1,41 +1,54 @@
 import SwiftUI
 
 struct DevToolbarView: View {
-
     @EnvironmentObject private var container: AppContainer
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            statusChip(
+                title: "AIS",
+                value: container.securityState.isAISValid ? "VALID" : "INVALID",
+                color: container.securityState.isAISValid ? .green : .red
+            )
 
-            status("AIS",
-                   container.securityState.isAISValid,
-                   "VALID",
-                   "INVALID")
+            statusChip(
+                title: "LOCK",
+                value: container.securityState.isLocked ? "ON" : "OFF",
+                color: container.securityState.isLocked ? .red : .green
+            )
 
-            status("LOCK",
-                   container.securityState.isLocked,
-                   "LOCKED",
-                   "OPEN")
+            statusChip(
+                title: "SESSION",
+                value: container.terminalSession.isLocked ? "LOCKED" : "ACTIVE",
+                color: container.terminalSession.isLocked ? .red : .green
+            )
+
+            statusChip(
+                title: "RB",
+                value: "\(container.rollbackCounter.current())",
+                color: .blue
+            )
 
             Spacer()
         }
-        .padding(8)
-        .background(ThemeAuthority.background)
-        .font(ThemeAuthority.font)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.thinMaterial)
     }
 
-    private func status(
-        _ label: String,
-        _ state: Bool,
-        _ trueText: String,
-        _ falseText: String
-    ) -> some View {
+    private func statusChip(title: String, value: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
 
-        HStack {
-            Text(label)
-
-            Text(state ? trueText : falseText)
-                .foregroundColor(state ? ThemeAuthority.warning : ThemeAuthority.terminalText)
+            Text("\(title): \(value)")
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.primary)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.primary.opacity(0.06))
+        .clipShape(Capsule())
     }
 }
