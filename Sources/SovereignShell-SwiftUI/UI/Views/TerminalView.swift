@@ -4,33 +4,49 @@ struct TerminalView: View {
     @EnvironmentObject private var container: AppContainer
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8) {
-                ForEach(container.terminalSession.outputLines, id: \.id) { line in
-                    Text(verbatim: line.text)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(color(for: line.kind))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .id(line.id)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(container.terminalSession.outputLines) { line in
+                        Text(verbatim: line.text)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(color(for: line.kind))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .id(line.id)
+                    }
                 }
+                .padding()
             }
-            .padding()
+            .background(Color.black)
+            .onAppear {
+                scrollToBottom(using: proxy)
+            }
+            .onChange(of: container.terminalSession.outputLines.count) { _, _ in
+                scrollToBottom(using: proxy)
+            }
         }
-        .background(Color.black)
     }
 
     private func color(for kind: TerminalOutputKind) -> Color {
         switch kind {
+        case .command:
+            return .white
         case .standard:
-            return .green
-        case .system:
-            return .yellow
-        case .success:
-            return .blue
+            return .white
         case .error:
             return .red
-        case .command:
-            return .gray
+        case .system:
+            return .cyan
+        }
+    }
+
+    private func scrollToBottom(using proxy: ScrollViewProxy) {
+        guard let lastID = container.terminalSession.outputLines.last?.id else {
+            return
+        }
+
+        DispatchQueue.main.async {
+            proxy.scrollTo(lastID, anchor: .bottom)
         }
     }
 }

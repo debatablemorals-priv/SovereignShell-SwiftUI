@@ -1,6 +1,13 @@
 import Foundation
 import Combine
 
+enum TerminalOutputKind: String, Codable, Equatable {
+    case command
+    case standard
+    case error
+    case system
+}
+
 @MainActor
 final class TerminalSession: ObservableObject {
     @Published private(set) var lines: [TerminalLine]
@@ -16,6 +23,10 @@ final class TerminalSession: ObservableObject {
         self.lines = lines
         self.isLocked = isLocked
         self.maxBufferLines = max(100, maxBufferLines)
+    }
+
+    var outputLines: [TerminalLine] {
+        lines
     }
 
     func appendCommandEcho(_ command: String) {
@@ -94,5 +105,11 @@ struct TerminalLine: Identifiable, Equatable {
         self.id = id
         self.text = text
         self.kind = kind
+    }
+
+    static func == (lhs: TerminalLine, rhs: TerminalLine) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.text == rhs.text &&
+        lhs.kind == rhs.kind
     }
 }
