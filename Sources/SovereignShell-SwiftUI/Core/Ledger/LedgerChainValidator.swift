@@ -1,25 +1,54 @@
 import Foundation
+import CryptoKit
 
-public struct LedgerChainValidator {
-
-    public static func validate(_ entries: [LedgerEntry]) throws {
-
+enum LedgerChainValidator {
+    static func validate(_ entries: [LedgerEntry]) throws {
         guard !entries.isEmpty else {
             throw LedgerError.invalidGenesis
         }
 
-        for i in 1..<entries.count {
+        let genesis = entries[0]
 
-            let current = entries[i]
-            let previous = entries[i - 1]
+        guard genesis.previousHash == String(repeating: "0", count: 64) else {
+            throw LedgerError.invalidGenesis
+        }
 
-            if current.previousHash != previous.envelopeHash {
-                throw LedgerError.invalidHashChain
+        guard genesis.envelopeHash == recomputeEnvelopeHash(for: genesis) else {
+            throw LedgerError.corruptedLedger
+        }
+
+        if entries.count == 1 {
+            return
+        }
+
+        var previous = genesis
+
+        for current in entries.dropFirst() {
+            guard current.previousHash == previous.envelopeHash else {
+                throw LedgerError.corruptedLedger
             }
 
-            if current.rollbackCounter < previous.rollbackCounter {
+            guard current.rollbackCounter > previous.rollbackCounter else {
                 throw LedgerError.rollbackViolation
             }
+
+            guard current.envelopeHash == recomputeEnvelopeHash(for: current) else {
+                throw LedgerError.corruptedLedger
+            }
+
+            previous = current
         }
+    }
+
+    private static func recomputeEnvelopeHash(for entry: LedgerEntry) -> String {
+        let payload = [
+            String(entry.rollbackCounter),
+            entry.requestHash,
+            entry.responseHash,
+            entry.previousHash
+        ].joined(separator: "|")
+
+        let digest = SHA256.hash(data: Data(payload.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
