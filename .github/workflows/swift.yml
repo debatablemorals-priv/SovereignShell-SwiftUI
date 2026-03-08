@@ -22,8 +22,8 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Show package manifest
-        run: cat Package.swift
-
       - name: Build app target
         run: swift build --target SovereignShell-SwiftUI --verbose
+
+      - name: Build test target without running tests
+        run: swift build --build-tests --verbose
