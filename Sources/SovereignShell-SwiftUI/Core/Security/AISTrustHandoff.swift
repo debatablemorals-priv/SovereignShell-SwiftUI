@@ -18,7 +18,7 @@ struct AISTrustHandoff {
         ledger: AISExecutionLedger
     ) throws {
         let rollback = ledger.currentRollbackCounter() + 1
-        let previousHash = try ledger.currentPreviousHash()
+        let previousHash = try ledger.currentLedgerPreviousHash()
 
         let event: AISEvent
 

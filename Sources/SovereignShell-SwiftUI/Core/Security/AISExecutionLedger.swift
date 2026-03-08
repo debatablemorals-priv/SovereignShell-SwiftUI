@@ -152,6 +152,10 @@ final class AISExecutionLedger {
         logger.security("AIS ledger manually locked.")
     }
 
+    func currentLedgerPreviousHash() throws -> String {
+        try currentPreviousHash()
+    }
+
     private func makeGenesisEntry() -> LedgerEntry {
         LedgerEntry(
             rollbackCounter: rollbackCounter,
