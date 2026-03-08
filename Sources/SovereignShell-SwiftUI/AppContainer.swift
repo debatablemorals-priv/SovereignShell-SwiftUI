@@ -41,6 +41,7 @@ final class AppContainer: ObservableObject {
             session: terminalSession,
             history: commandHistory,
             securityState: securityState,
+            rollbackCounter: rollbackCounter,
             executionLedger: executionLedger,
             logger: logger
         )
@@ -48,16 +49,19 @@ final class AppContainer: ObservableObject {
         do {
             try executionLedger.bootstrap()
 
+            try syncRollbackCounterFromLedger()
+
             try executionLedger.verifyAgainstRollbackCounter(
                 UInt64(rollbackCounter.current())
             )
 
             let bootEvent = AISEventFactory.bootEvent(
                 rollbackCounter: executionLedger.currentRollbackCounter() + 1,
-                previousHash: try currentLedgerPreviousHash(from: ledgerStore)
+                previousHash: try executionLedger.currentLedgerPreviousHash()
             )
 
             try executionLedger.append(event: bootEvent)
+            try syncRollbackCounterFromLedger()
 
             securityState.markAISValid()
 
@@ -81,14 +85,13 @@ final class AppContainer: ObservableObject {
         }
     }
 
-    private func currentLedgerPreviousHash(from store: LedgerStore) throws -> String {
-        let entries = try store.load()
-        try LedgerChainValidator.validate(entries)
+    private func syncRollbackCounterFromLedger() throws {
+        let ledgerValue = executionLedger.currentRollbackCounter()
 
-        guard let previous = entries.last else {
-            throw LedgerError.invalidGenesis
+        guard ledgerValue <= UInt64(Int.max) else {
+            throw LedgerError.rollbackViolation
         }
 
-        return previous.envelopeHash
+        try rollbackCounter.commit(Int(ledgerValue))
     }
 }

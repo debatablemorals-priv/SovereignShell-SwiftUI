@@ -7,6 +7,7 @@ final class TerminalEngine: ObservableObject {
     private let session: TerminalSession
     private let history: CommandHistory
     private let securityState: SecurityState
+    private let rollbackCounter: RollbackCounter
     private let executionLedger: AISExecutionLedger
     private let logger: SecureLogger
 
@@ -15,6 +16,7 @@ final class TerminalEngine: ObservableObject {
         session: TerminalSession,
         history: CommandHistory,
         securityState: SecurityState,
+        rollbackCounter: RollbackCounter,
         executionLedger: AISExecutionLedger,
         logger: SecureLogger
     ) {
@@ -22,6 +24,7 @@ final class TerminalEngine: ObservableObject {
         self.session = session
         self.history = history
         self.securityState = securityState
+        self.rollbackCounter = rollbackCounter
         self.executionLedger = executionLedger
         self.logger = logger
     }
@@ -70,6 +73,8 @@ final class TerminalEngine: ObservableObject {
                 response: responseForLedger
             )
 
+            try syncRollbackCounterFromLedger()
+
             logger.security("Ledger commit succeeded for command: \(trimmed)")
 
             if result.shouldClearBeforeRender {
@@ -91,6 +96,12 @@ final class TerminalEngine: ObservableObject {
 
             do {
                 let disposition = try executionLedger.handleSecurityEvent(.ledgerCorruption)
+
+                do {
+                    try syncRollbackCounterFromLedger()
+                } catch {
+                    logger.security("Rollback counter sync failed after AIS security event.")
+                }
 
                 securityState.markAISInvalid()
                 session.lock()
@@ -123,7 +134,7 @@ final class TerminalEngine: ObservableObject {
 
         } catch {
 
-            logger.error("Unexpected execution failure for command: \(trimmed)")
+            logger.error("Unexpected execution failure for command: \(trimmed)"
             session.appendOutput("UNEXPECTED EXECUTION FAILURE", kind: .error)
         }
     }
@@ -138,5 +149,15 @@ final class TerminalEngine: ObservableObject {
             kind: .system
         )
         logger.security("Terminal engine activated after deterministic boot validation.")
+    }
+
+    private func syncRollbackCounterFromLedger() throws {
+        let ledgerValue = executionLedger.currentRollbackCounter()
+
+        guard ledgerValue <= UInt64(Int.max) else {
+            throw LedgerError.rollbackViolation
+        }
+
+        try rollbackCounter.commit(Int(ledgerValue))
     }
 }
