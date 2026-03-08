@@ -5,8 +5,8 @@ extension LedgerEntry {
     init(event: AISEvent) {
         self.init(
             rollbackCounter: event.rollbackCounter,
-            requestHash: LedgerEntry.hash(event.eventType.rawValue),
-            responseHash: LedgerEntry.hash(
+            requestHash: Self.hash(event.eventType.rawValue),
+            responseHash: Self.hash(
                 event.trustState.rawValue + "|" + event.handoffClass.rawValue
             ),
             previousHash: event.previousHash
