@@ -6,11 +6,12 @@ struct AISEventFactory {
         rollbackCounter: UInt64,
         previousHash: String
     ) -> AISEvent {
-
         AISEvent(
             rollbackCounter: rollbackCounter,
+            timestamp: deterministicTimestamp(for: rollbackCounter),
             eventType: .command,
             trustState: .trusted,
+            handoffClass: .none,
             previousHash: previousHash
         )
     }
@@ -19,11 +20,12 @@ struct AISEventFactory {
         rollbackCounter: UInt64,
         previousHash: String
     ) -> AISEvent {
-
         AISEvent(
             rollbackCounter: rollbackCounter,
+            timestamp: deterministicTimestamp(for: rollbackCounter),
             eventType: .boot,
             trustState: .trusted,
+            handoffClass: .none,
             previousHash: previousHash
         )
     }
@@ -33,9 +35,9 @@ struct AISEventFactory {
         previousHash: String,
         handoffClass: AISHandoffClass
     ) -> AISEvent {
-
         AISEvent(
             rollbackCounter: rollbackCounter,
+            timestamp: deterministicTimestamp(for: rollbackCounter),
             eventType: .handoffAttested,
             trustState: .trusted,
             handoffClass: handoffClass,
@@ -48,9 +50,9 @@ struct AISEventFactory {
         previousHash: String,
         handoffClass: AISHandoffClass
     ) -> AISEvent {
-
         AISEvent(
             rollbackCounter: rollbackCounter,
+            timestamp: deterministicTimestamp(for: rollbackCounter),
             eventType: .handoffFailed,
             trustState: .broken,
             handoffClass: handoffClass,
@@ -62,12 +64,17 @@ struct AISEventFactory {
         rollbackCounter: UInt64,
         previousHash: String
     ) -> AISEvent {
-
         AISEvent(
             rollbackCounter: rollbackCounter,
+            timestamp: deterministicTimestamp(for: rollbackCounter),
             eventType: .trustBroken,
             trustState: .broken,
+            handoffClass: .none,
             previousHash: previousHash
         )
+    }
+
+    private static func deterministicTimestamp(for rollbackCounter: UInt64) -> UInt64 {
+        rollbackCounter
     }
 }
