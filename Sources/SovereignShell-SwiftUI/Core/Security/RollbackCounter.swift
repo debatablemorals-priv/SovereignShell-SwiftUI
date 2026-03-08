@@ -13,25 +13,27 @@ final class RollbackCounter: ObservableObject {
         value
     }
 
-    func advance() {
+    func commit(_ newValue: Int) throws {
+        guard newValue >= 0 else {
+            throw LedgerError.rollbackViolation
+        }
+
+        guard newValue >= value else {
+            throw LedgerError.rollbackViolation
+        }
+
+        value = newValue
+    }
+
+    func advance() throws {
+        guard value < Int.max else {
+            throw LedgerError.rollbackViolation
+        }
+
         value += 1
     }
 
-    func validateMonotonicProgression(_ incoming: Int) throws {
-        guard incoming >= value else {
-            throw RollbackCounterError.rollbackDetected(
-                expectedMinimum: value,
-                received: incoming
-            )
-        }
+    func resetForTesting(to newValue: Int = 0) {
+        value = max(0, newValue)
     }
-
-    func commit(_ newValue: Int) throws {
-        try validateMonotonicProgression(newValue)
-        value = newValue
-    }
-}
-
-enum RollbackCounterError: Error, Equatable {
-    case rollbackDetected(expectedMinimum: Int, received: Int)
 }
