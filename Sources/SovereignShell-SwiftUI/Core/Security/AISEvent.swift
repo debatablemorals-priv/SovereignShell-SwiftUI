@@ -106,7 +106,29 @@ struct AISEvent: Codable, Equatable {
         components.append(bindingID ?? "")
         components.append(sandboxMeasurement ?? "")
         components.append(terminalMeasurement ?? "")
-        components.append(attestationHash ?? "")
+
+        let canonical = components.joined(separator: "|")
+        let digest = SHA256.hash(data: Data(canonical.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func computeEnvelopeHash(
+        rollbackCounter: UInt64,
+        timestamp: UInt64,
+        eventType: AISEventType,
+        trustState: AISTrustState,
+        handoffClass: AISHandoffClass,
+        previousHash: String,
+        attestationHash: String
+    ) -> String {
+        var components: [String] = []
+        components.append(String(rollbackCounter))
+        components.append(String(timestamp))
+        components.append(eventType.rawValue)
+        components.append(trustState.rawValue)
+        components.append(handoffClass.rawValue)
+        components.append(previousHash)
+        components.append(attestationHash)
 
         let canonical = components.joined(separator: "|")
         let digest = SHA256.hash(data: Data(canonical.utf8))
