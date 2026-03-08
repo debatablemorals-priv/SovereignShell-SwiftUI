@@ -8,6 +8,8 @@ enum AISEventType: String, Codable, Equatable {
     case transportReady
     case transferOut
     case transferIn
+    case handoffAttested
+    case handoffFailed
     case lock
     case erase
     case eraseFailed
