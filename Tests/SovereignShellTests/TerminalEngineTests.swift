@@ -4,13 +4,20 @@ import XCTest
 final class TerminalEngineTests: XCTestCase {
     @MainActor
     func testTerminalEngineInitializes() {
-        let logger = SecureLogger(subsystem: "SovereignShellTests", category: "TerminalEngineTests")
+        let logger = SecureLogger()
         let session = TerminalSession()
         let history = CommandHistory()
         let securityState = SecurityState()
         let rollbackCounter = RollbackCounter()
-        let ledgerStore = LedgerStore()
-        let executionLedger = AISExecutionLedger(store: ledgerStore, logger: logger)
+
+        let ledgerURL = URL(fileURLWithPath: "/tmp/test-ledger.json")
+        let ledgerStore = LedgerStore(fileURL: ledgerURL)
+        let executionLedger = AISExecutionLedger(
+            store: ledgerStore,
+            logger: logger,
+            initialRollbackCounter: 0
+        )
+
         let router = CommandRouter()
 
         let engine = TerminalEngine(
