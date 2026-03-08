@@ -75,7 +75,7 @@ final class AISExecutionLedger {
         let envelope = try makeAttestationEnvelope(
             rollbackCounter: nextRollbackCounter,
             operationClass: .commandExecution,
-            capabilityClass: AISCapabilityClass.none,
+            capabilityClass: .none,
             handoffClass: .none,
             trustState: .trusted,
             previousHash: previous.envelopeHash
@@ -214,8 +214,7 @@ final class AISExecutionLedger {
         guard last.rollbackCounter == expectedRollbackCounter else {
             logger.security("AIS rollback binding mismatch detected.")
             isLocked = true
-            throw LedgerError.rollbackViolation
-        }
+            throw LedgerError.rollbackViolation         }
     }
 
     func currentRollbackCounter() -> UInt64 {

@@ -8,7 +8,7 @@ struct AISEvent: Codable, Equatable {
     let trustState: AISTrustState
     let handoffClass: AISHandoffClass
     let previousHash: String
-
+    let envelopeHash: String
     let operationClass: AISOperationClass?
     let capabilityClass: AISCapabilityClass?
     let policyVersion: AISPolicyVersion?
@@ -17,7 +17,6 @@ struct AISEvent: Codable, Equatable {
     let sandboxMeasurement: String?
     let terminalMeasurement: String?
     let attestationHash: String?
-    let envelopeHash: String
 
     init(
         rollbackCounter: UInt64,
@@ -26,6 +25,7 @@ struct AISEvent: Codable, Equatable {
         trustState: AISTrustState,
         handoffClass: AISHandoffClass,
         previousHash: String,
+        envelopeHash: String? = nil,
         operationClass: AISOperationClass? = nil,
         capabilityClass: AISCapabilityClass? = nil,
         policyVersion: AISPolicyVersion? = nil,
@@ -33,8 +33,7 @@ struct AISEvent: Codable, Equatable {
         bindingID: String? = nil,
         sandboxMeasurement: String? = nil,
         terminalMeasurement: String? = nil,
-        attestationHash: String? = nil,
-        envelopeHash: String? = nil
+        attestationHash: String? = nil
     ) {
         self.rollbackCounter = rollbackCounter
         self.timestamp = timestamp
@@ -49,9 +48,8 @@ struct AISEvent: Codable, Equatable {
         self.bindingID = bindingID
         self.sandboxMeasurement = sandboxMeasurement
         self.terminalMeasurement = terminalMeasurement
-        self.attestationHash = attestationHash
 
-        self.envelopeHash = envelopeHash ?? Self.computeEnvelopeHash(
+        let derivedAttestationHash = attestationHash ?? Self.computeAttestationHash(
             rollbackCounter: rollbackCounter,
             timestamp: timestamp,
             eventType: eventType,
@@ -64,12 +62,22 @@ struct AISEvent: Codable, Equatable {
             ledgerDomain: ledgerDomain,
             bindingID: bindingID,
             sandboxMeasurement: sandboxMeasurement,
-            terminalMeasurement: terminalMeasurement,
-            attestationHash: attestationHash
+            terminalMeasurement: terminalMeasurement
+        )
+
+        self.attestationHash = derivedAttestationHash
+        self.envelopeHash = envelopeHash ?? Self.computeEnvelopeHash(
+            rollbackCounter: rollbackCounter,
+            timestamp: timestamp,
+            eventType: eventType,
+            trustState: trustState,
+            handoffClass: handoffClass,
+            previousHash: previousHash,
+            attestationHash: derivedAttestationHash
         )
     }
 
-    private static func computeEnvelopeHash(
+    private static func computeAttestationHash(
         rollbackCounter: UInt64,
         timestamp: UInt64,
         eventType: AISEventType,
@@ -82,8 +90,7 @@ struct AISEvent: Codable, Equatable {
         ledgerDomain: AISLedgerDomain?,
         bindingID: String?,
         sandboxMeasurement: String?,
-        terminalMeasurement: String?,
-        attestationHash: String?
+        terminalMeasurement: String?
     ) -> String {
         var components: [String] = []
         components.append(String(rollbackCounter))
