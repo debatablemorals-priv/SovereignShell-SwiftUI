@@ -106,7 +106,7 @@ public struct LedgerEntry: Codable, Identifiable {
         components.append(operationClassRaw ?? "")
         components.append(capabilityClassRaw ?? "")
         components.append(policyVersion ?? "")
-         components.append(ledgerDomain ?? "")
+        components.append(ledgerDomain ?? "")
         components.append(bindingID ?? "")
         components.append(sandboxMeasurement ?? "")
         components.append(terminalMeasurement ?? "")
