@@ -21,7 +21,7 @@ struct TerminalView: View {
             .onAppear {
                 scrollToBottom(using: proxy)
             }
-            .onChange(of: container.terminalSession.outputLines.count) { _, _ in
+            .onChange(of: container.terminalSession.outputLines.count) { _ in
                 scrollToBottom(using: proxy)
             }
         }
