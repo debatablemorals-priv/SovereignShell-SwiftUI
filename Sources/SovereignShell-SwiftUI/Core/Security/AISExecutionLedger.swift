@@ -338,7 +338,7 @@ final class AISExecutionLedger {
                 "policy:\(policyVersion.rawValue)",
                 "domain:\(ledgerDomain.rawValue)"
             ],
-               terminalComponents: [
+            terminalComponents: [
                 "ais-terminal",
                 "runtime:\(String(describing: AISExecutionLedger.self))",
                 "logger:\(String(describing: SecureLogger.self))",
