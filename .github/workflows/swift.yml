@@ -3,9 +3,7 @@ name: Swift Build
 on:
   push:
     branches: [ main ]
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  workflow_dispatch:
 
 jobs:
   build:
