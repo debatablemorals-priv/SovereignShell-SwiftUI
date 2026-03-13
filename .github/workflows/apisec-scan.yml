@@ -1,21 +1,15 @@
 name: APIsec Scan
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   apisec:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Run APIsec scan
-        uses: apisec-ai/apisec-scan@latest
-        with:
-          apisec_token: ${{ secrets.APISEC_TOKEN }}
+      - name: APIsec intentionally disabled
+        run: echo "APIsec workflow disabled until valid APIsec project/configuration is available."
