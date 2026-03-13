@@ -30,3 +30,10 @@ jobs:
 
       - name: Run curated smoke tests
         run: swift test --filter CISmokeTests --verbose
+
+steps:
+  - uses: actions/setup-copilot@v0
+    with:
+      version: "latest" # optional, defaults to "latest"
+      github-token: ${{ secrets.COPILOT_TOKEN }} # optional, defaults to github.token
+  - run: copilot --version
