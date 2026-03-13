@@ -23,8 +23,10 @@ final class AppContainer: ObservableObject {
             in: .userDomainMask
         )[0]
 
-        let ledgerURL = applicationSupportURL
+        let securityDirectoryURL = applicationSupportURL
             .appendingPathComponent("Security", isDirectory: true)
+
+        let ledgerURL = securityDirectoryURL
             .appendingPathComponent("ledger.chain", isDirectory: false)
 
         let ledgerStore = LedgerStore(fileURL: ledgerURL)
@@ -46,6 +48,11 @@ final class AppContainer: ObservableObject {
         )
 
         do {
+            try FileManager.default.createDirectory(
+                at: securityDirectoryURL,
+                withIntermediateDirectories: true
+            )
+
             try executionLedger.bootstrap()
             try syncRollbackCounterFromLedger()
             try executionLedger.verifyAgainstRollbackCounter(
