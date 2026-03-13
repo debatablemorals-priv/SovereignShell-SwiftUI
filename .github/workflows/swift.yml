@@ -3,8 +3,6 @@ name: Swift Build
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 concurrency:
   group: swift-build-${{ github.ref }}
@@ -29,4 +27,4 @@ jobs:
         run: swift package resolve
 
       - name: Build package
-        run: swift build --verbose
+        run: swift build
