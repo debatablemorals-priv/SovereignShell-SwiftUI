@@ -122,8 +122,9 @@ final class AISExecutionLedger {
         }
 
         var entries = try store.load()
-        var entries = try store.load()
-    guard let previous = entries.last else {
+        try LedgerChainValidator.validate(entries)
+
+        guard let previous = entries.last else {
             logger.security("AIS append failed because genesis is missing.")
             isLocked = true
             throw LedgerError.invalidGenesis
@@ -176,13 +177,15 @@ final class AISExecutionLedger {
             trustState: trustState,
             handoffClass: .none,
             previousHash: try currentPreviousHashLocked(),
+            envelopeHash: nil,
             operationClass: .securityEvent,
-            capabilityClass: .none,
+            capabilityClass: AISCapabilityClass.none,
             policyVersion: binding.policyVersion,
             ledgerDomain: binding.ledgerDomain,
             bindingID: binding.bindingID.rawValue,
             sandboxMeasurement: binding.measurement.sandboxMeasurement,
-            terminalMeasurement: binding.measurement.terminalMeasurement
+            terminalMeasurement: binding.measurement.terminalMeasurement,
+            attestationHash: nil
         )
 
         do {
@@ -335,7 +338,7 @@ final class AISExecutionLedger {
                 "policy:\(policyVersion.rawValue)",
                 "domain:\(ledgerDomain.rawValue)"
             ],
-            terminalComponents: [
+               terminalComponents: [
                 "ais-terminal",
                 "runtime:\(String(describing: AISExecutionLedger.self))",
                 "logger:\(String(describing: SecureLogger.self))",
