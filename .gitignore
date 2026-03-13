@@ -1,0 +1,44 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+DerivedData/
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata/
+
+# Build artifacts
+*.o
+*.a
+*.dylib
+*.so
+*.swiftmodule
+*.swiftdoc
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+.env.local
+.env.*
+
+# API keys
+*.key
+*.pem
+*.p12
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# iOS
+*.ipa
+*.dSYM.zip
+*.dSYM
