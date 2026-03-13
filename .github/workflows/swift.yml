@@ -10,6 +10,9 @@ concurrency:
   group: swift-smoke-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   smoke:
     runs-on: macos-14
@@ -26,7 +29,7 @@ jobs:
         run: swift build --target SovereignShell-SwiftUI --verbose
 
       - name: Build tests
-        run: swift build --build-tests --verbose
+        run: swift build --build-tests
 
-      - name: Run curated smoke tests
-        run: swift test --filter CISmokeTests --verbose
+      - name: Run smoke tests
+        run: swift test --parallel
