@@ -14,7 +14,8 @@ env:
 jobs:
   analyze:
     name: Analyze
-    runs-on: macos-15
+    runs-on: macos-latest
+
     permissions:
       actions: read
       contents: read
