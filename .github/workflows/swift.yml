@@ -15,8 +15,8 @@ env:
 
 jobs:
   smoke:
-    runs-on: macos-14
-    timeout-minutes: 15
+    runs-on: macos-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -25,11 +25,11 @@ jobs:
       - name: Show Swift version
         run: swift --version
 
-      - name: Build app target
-        run: swift build --target SovereignShell-SwiftUI --verbose
+      - name: Build package
+        run: swift build --verbose
 
       - name: Build tests
         run: swift build --build-tests
 
-      - name: Run smoke tests
+      - name: Run tests
         run: swift test --parallel
