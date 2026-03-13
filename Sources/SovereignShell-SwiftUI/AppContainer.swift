@@ -48,7 +48,6 @@ final class AppContainer: ObservableObject {
         do {
             try executionLedger.bootstrap()
             try syncRollbackCounterFromLedger()
-
             try executionLedger.verifyAgainstRollbackCounter(
                 UInt64(rollbackCounter.current())
             )
@@ -62,19 +61,11 @@ final class AppContainer: ObservableObject {
             try syncRollbackCounterFromLedger()
 
             securityState.markAISValid()
-
-            logger.security(
-                "Deterministic boot sequence completed successfully."
-            )
-
+            logger.security("Deterministic boot sequence completed successfully.")
             terminalEngine.bootstrap()
         } catch {
             securityState.markAISInvalid()
-
-            logger.security(
-                "Deterministic boot sequence failed. Terminal activation blocked."
-            )
-
+            logger.security("Deterministic boot sequence failed. Terminal activation blocked.")
             terminalSession.appendOutput(
                 "AIS verification failed. Execution halted.",
                 kind: .error
@@ -84,7 +75,6 @@ final class AppContainer: ObservableObject {
 
     private func syncRollbackCounterFromLedger() throws {
         let ledgerValue = executionLedger.currentRollbackCounter()
-
         guard ledgerValue <= UInt64(Int.max) else {
             throw LedgerError.rollbackViolation
         }

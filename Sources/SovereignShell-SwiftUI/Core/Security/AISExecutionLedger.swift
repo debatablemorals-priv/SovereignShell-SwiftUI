@@ -122,9 +122,8 @@ final class AISExecutionLedger {
         }
 
         var entries = try store.load()
-        try LedgerChainValidator.validate(entries)
-
-        guard let previous = entries.last else {
+        var entries = try store.load()
+    guard let previous = entries.last else {
             logger.security("AIS append failed because genesis is missing.")
             isLocked = true
             throw LedgerError.invalidGenesis
@@ -178,7 +177,7 @@ final class AISExecutionLedger {
             handoffClass: .none,
             previousHash: try currentPreviousHashLocked(),
             operationClass: .securityEvent,
-            capabilityClass: AISCapabilityClass.none,
+            capabilityClass: .none,
             policyVersion: binding.policyVersion,
             ledgerDomain: binding.ledgerDomain,
             bindingID: binding.bindingID.rawValue,
@@ -214,7 +213,8 @@ final class AISExecutionLedger {
         guard last.rollbackCounter == expectedRollbackCounter else {
             logger.security("AIS rollback binding mismatch detected.")
             isLocked = true
-            throw LedgerError.rollbackViolation         }
+            throw LedgerError.rollbackViolation
+        }
     }
 
     func currentRollbackCounter() -> UInt64 {
