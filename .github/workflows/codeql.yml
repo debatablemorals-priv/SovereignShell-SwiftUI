@@ -3,14 +3,11 @@ name: CodeQL Advanced
 on:
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   analyze:
     name: Analyze
     runs-on: macos-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     permissions:
       actions: read
@@ -26,6 +23,9 @@ jobs:
         with:
           languages: swift
           build-mode: manual
+
+      - name: Resolve Swift packages
+        run: swift package resolve
 
       - name: Build Swift package
         run: swift build --arch arm64 --product SovereignShell-SwiftUI
