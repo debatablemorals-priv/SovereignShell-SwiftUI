@@ -24,9 +24,6 @@ jobs:
           languages: swift
           build-mode: manual
 
-      - name: Resolve Swift packages
-        run: swift package resolve
-
       - name: Build Swift package
         run: swift build --arch arm64 --product SovereignShell-SwiftUI
 
